@@ -19,7 +19,9 @@
 - [ ] ALP fixed-supply token, transfer restriction, sell fee, and treasury split.
 - [ ] Asset registry, OracleAdapter, partner vault strategies, pool factory, and 50/50 position entry.
 - [ ] Global compute reward index, compensation strategies, emission/burn epoch settlement, and claims.
-- [ ] Referral, tier, node, Top100 Merkle, liquidity-cycle, and buyback controls.
+- [x] Initial fixed-supply token, registry, vault, launch-pool, global compute, compensation, and epoch-settlement implementation.
+- [x] Sponsor registry, 20-level referral reward engine, and production configuration guard.
+- [ ] Tier, node, Top100 Merkle, liquidity-cycle, buyback controls, and full integration tests.
 - [ ] Foundry unit, fuzz, invariant, and fork tests.
 
 ## Phase 2 — Indexer and API
