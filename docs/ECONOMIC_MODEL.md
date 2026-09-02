@@ -58,3 +58,7 @@ The 1,700 BPS fee is conserved as 500 BPS buyback, 100 BPS Top100, 400 BPS node/
 ## Items intentionally configurable
 
 Referral USDT/compute split, node-dividend funding source, Top100 ranking strategy, non-CARD vault policy, and compensation strategy must be set by governance. Production mode rejects incomplete configuration.
+
+## Liquidity cycle
+
+The first ALP receipt for a wallet establishes a fixed baseline. The four 15-day windows require gross ALP sells of 20%, 15%, 10%, and 5% of that baseline respectively. An overdue shortfall is permissionlessly settled by burning available ALP. Since ordinary wallet transfers remain permitted, an uncovered shortfall becomes burn debt and is automatically burned from later ALP receipts until settled. This preserves the rule without granting an administrator authority to alter wallet balances.

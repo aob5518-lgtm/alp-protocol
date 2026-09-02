@@ -5,6 +5,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ILiquidityCycleManager} from "./interfaces/ILiquidityCycleManager.sol";
 
 /// @notice Fixed-supply ALP with a MainPair buy block and an immutable 17% sell fee schedule.
 /// @dev Ownership is expected to be a timelock-controlled Safe before production activation.
@@ -13,6 +14,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     error MainPairAlreadyConfigured();
     error ALPBuyRestricted(address buyer);
     error InvalidFeeConfiguration();
+    error LiquidityCycleManagerAlreadyConfigured();
 
     uint256 public constant MAX_SUPPLY = 210_000_000 ether;
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -23,8 +25,10 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     uint16 public constant COMMUNITY_BPS = 500;
     uint16 public constant DEVELOPMENT_BPS = 200;
     bytes32 public constant EMISSION_ENGINE_ROLE = keccak256("EMISSION_ENGINE_ROLE");
+    bytes32 public constant LIQUIDITY_CYCLE_ROLE = keccak256("LIQUIDITY_CYCLE_ROLE");
 
     address public mainPair;
+    address public liquidityCycleManager;
     bool public buyRestrictionEnabled = true;
     mapping(address => bool) public buyWhitelist;
     mapping(address => bool) public sellFeeExempt;
@@ -42,6 +46,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     event SellFeeCollected(address indexed seller, uint256 grossAmount, uint256 feeAmount);
     event ProtocolBurned(address indexed account, uint256 amount, address indexed engine);
     event ProtocolTransferred(address indexed from, address indexed to, uint256 amount, address engine);
+    event LiquidityCycleManagerConfigured(address indexed manager);
 
     constructor(
         address initialReserve,
@@ -95,8 +100,18 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         emit BuyRestrictionUpdated(enabled);
     }
 
+    function configureLiquidityCycleManager(address manager) external onlyOwner {
+        if (manager == address(0)) revert ZeroAddress();
+        if (liquidityCycleManager != address(0)) revert LiquidityCycleManagerAlreadyConfigured();
+        liquidityCycleManager = manager;
+        emit LiquidityCycleManagerConfigured(manager);
+    }
+
     /// @notice Restricted to the configured epoch engine; no mint capability exists anywhere in this token.
-    function protocolBurn(address account, uint256 amount) external onlyRole(EMISSION_ENGINE_ROLE) {
+    function protocolBurn(address account, uint256 amount) external {
+        if (!hasRole(EMISSION_ENGINE_ROLE, msg.sender) && !hasRole(LIQUIDITY_CYCLE_ROLE, msg.sender)) {
+            _checkRole(EMISSION_ENGINE_ROLE, msg.sender);
+        }
         _burn(account, amount);
         emit ProtocolBurned(account, amount, msg.sender);
     }
@@ -126,9 +141,13 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
             super._update(from, communityTreasury, communityFee);
             super._update(from, developmentTreasury, developmentFee);
             super._update(from, to, value - feeAmount);
+            if (liquidityCycleManager != address(0)) ILiquidityCycleManager(liquidityCycleManager).onAlpSold(from, value);
             emit SellFeeCollected(from, value, feeAmount);
             return;
         }
         super._update(from, to, value);
+        if (liquidityCycleManager != address(0) && from != address(0) && to != address(0)) {
+            ILiquidityCycleManager(liquidityCycleManager).onAlpReceived(to, value);
+        }
     }
 }

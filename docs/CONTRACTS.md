@@ -16,6 +16,7 @@
 - `NodeRegistry` / `NodeDividendDistributor`: records Small/Big nodes and distributes dividends from a separately funded node treasury using an immutable per-epoch Merkle root, snapshot block, node ownership check, and one-time claim state. This module does not charge users or infer the unresolved node funding source.
 - `Top100Distributor`: distributes the Top100 treasury by an indexer-produced Merkle snapshot. Every leaf binds epoch, rank, wallet, effective compute, and amount; only the Safe-authorized root manager can submit a root.
 - `DifferentialRewardEngine`: follows a Position's sponsor path for at most 20 levels and pays only `max(upper tier rate - lower tier rate, 0)` from the configured Reward Treasury. It records each position as processed, so a lower tier's entitlement is never paid twice as a higher tier's reward.
+- `LiquidityCycleManager`: begins on a wallet's first ALP receipt, credits gross ALP sold to four 15-day cycles (20%, 15%, 10%, 5%), and lets anyone settle an overdue shortfall. A shortfall burns the current wallet balance; any remainder is durable burn debt that automatically consumes future ALP receipts. The manager is configured once in `ALPToken` and receives only a narrow burn role.
 
 ## Privilege model
 
