@@ -11,6 +11,7 @@ import {SponsorRegistry} from "./SponsorRegistry.sol";
 import {ReferralRewardEngine} from "./ReferralRewardEngine.sol";
 import {ICompensationStrategy} from "./interfaces/ICompensationStrategy.sol";
 import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
+import {TierEngine} from "./TierEngine.sol";
 
 /// @notice Creates per-asset pools and grants them only the narrow roles required for position accounting.
 contract LaunchPoolFactory is Ownable2Step {
@@ -31,6 +32,7 @@ contract LaunchPoolFactory is Ownable2Step {
     GlobalComputeEngine public immutable computeEngine;
     SponsorRegistry public immutable sponsorRegistry;
     ReferralRewardEngine public immutable referralRewardEngine;
+    TierEngine public immutable tierEngine;
     mapping(uint256 => address[]) private _poolsForAsset;
     mapping(address => bool) public isPool;
 
@@ -48,18 +50,21 @@ contract LaunchPoolFactory is Ownable2Step {
         IERC20Metadata usdt_,
         GlobalComputeEngine computeEngine_,
         SponsorRegistry sponsorRegistry_,
-        ReferralRewardEngine referralRewardEngine_
+        ReferralRewardEngine referralRewardEngine_,
+        TierEngine tierEngine_
     ) Ownable(initialOwner) {
         if (
             initialOwner == address(0) || address(registry_) == address(0) || address(usdt_) == address(0)
                 || address(computeEngine_) == address(0) || address(sponsorRegistry_) == address(0)
                 || address(referralRewardEngine_) == address(0)
+                || address(tierEngine_) == address(0)
         ) revert ZeroAddress();
         registry = registry_;
         usdt = usdt_;
         computeEngine = computeEngine_;
         sponsorRegistry = sponsorRegistry_;
         referralRewardEngine = referralRewardEngine_;
+        tierEngine = tierEngine_;
     }
 
     function createPool(uint256 assetId, PoolConfig calldata config) external onlyOwner returns (LaunchPool pool) {
@@ -78,6 +83,7 @@ contract LaunchPoolFactory is Ownable2Step {
             config.compensationStrategy,
             sponsorRegistry,
             referralRewardEngine,
+            tierEngine,
             config.rewardTreasury,
             config.liquidityTreasury,
             config.computeWeightE18
@@ -86,6 +92,7 @@ contract LaunchPoolFactory is Ownable2Step {
         computeEngine.registerPool(address(pool));
         sponsorRegistry.registerPool(address(pool));
         referralRewardEngine.registerPool(address(pool));
+        tierEngine.registerPool(address(pool));
         _poolsForAsset[assetId].push(address(pool));
         isPool[address(pool)] = true;
         emit LaunchPoolCreated(assetId, address(pool), config.poolOwner, address(config.compensationStrategy), config.computeWeightE18);

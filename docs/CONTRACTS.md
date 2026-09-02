@@ -12,6 +12,7 @@
 - `SponsorRegistry` / `ReferralRewardEngine`: irreversible sponsor bindings, effective-direct unlock depth, 20-level fixed schedule, and configurable USDT/compute reward split.
 - `ProductionConfigValidator`: prevents production activation until an oracle, MainPair, Safe, timelock, compensation strategy, node funding source, and final reward split are recorded.
 - `ChainlinkOracleAdapter`: normalizes configured USD feeds to 18 decimals and rejects zero/negative answers, incomplete rounds, and data older than the configured maximum age.
+- `TierEngine`: records each Position's configured volume basis through at most 20 uplines, maintains total/direct-branch/largest-branch volume, and derives the fixed V1–V9 small-district tier without off-chain calculations.
 
 ## Privilege model
 
