@@ -1,0 +1,13 @@
+{
+  "name": "@alp/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "test": "forge test -vvv",
+    "test:invariant": "forge test --match-test invariant -vvv",
+    "fmt": "forge fmt --check"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0"
+  }
+}

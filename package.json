@@ -1,0 +1,21 @@
+{
+  "name": "asset-launch-protocol",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "turbo dev --parallel",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "contracts:test": "pnpm --dir packages/contracts test",
+    "simulate:economics": "tsx scripts/simulate/economics.ts"
+  },
+  "devDependencies": {
+    "solc": "0.8.30",
+    "tsx": "^4.21.0",
+    "turbo": "^2.7.1",
+    "typescript": "^5.9.3"
+  }
+}
