@@ -13,6 +13,7 @@
 - `ProductionConfigValidator`: prevents production activation until an oracle, MainPair, Safe, timelock, compensation strategy, node funding source, and final reward split are recorded.
 - `ChainlinkOracleAdapter`: normalizes configured USD feeds to 18 decimals and rejects zero/negative answers, incomplete rounds, and data older than the configured maximum age.
 - `TierEngine`: records each Position's configured volume basis through at most 20 uplines, maintains total/direct-branch/largest-branch volume, and derives the fixed V1–V9 small-district tier without off-chain calculations.
+- `NodeRegistry` / `NodeDividendDistributor`: records Small/Big nodes and distributes dividends from a separately funded node treasury using an immutable per-epoch Merkle root, snapshot block, node ownership check, and one-time claim state. This module does not charge users or infer the unresolved node funding source.
 
 ## Privilege model
 

@@ -24,6 +24,7 @@
 - [x] Chainlink price adapter with stale-data and incomplete-round rejection.
 - [x] Launch Pool Factory and end-to-end 50/50 position creation with registry risk checks and referral activation.
 - [x] V1–V9 Tier volume ledger with largest-branch exclusion and configurable volume base for new deployments.
+- [x] Node registry and independently funded, Merkle-snapshot node-dividend claims.
 - [ ] Tier, node, Top100 Merkle, liquidity-cycle, buyback controls, and full integration tests.
 - [ ] Foundry unit, fuzz, invariant, and fork tests.
 
