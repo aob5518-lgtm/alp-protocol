@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ALPToken} from "../src/ALPToken.sol";
+import {GenesisReserve} from "../src/GenesisReserve.sol";
 import {LiquidityCycleManager} from "../src/LiquidityCycleManager.sol";
 
 contract LiquidityCycleManagerTest is Test {
@@ -12,8 +13,11 @@ contract LiquidityCycleManagerTest is Test {
     address internal pair = makeAddr("pair");
     ALPToken internal alp;
     LiquidityCycleManager internal manager;
+    GenesisReserve internal genesisReserve;
 
     function setUp() public {
+        genesisReserve = new GenesisReserve(address(this));
+        reserve = address(genesisReserve);
         alp = new ALPToken(
             reserve,
             address(this),
@@ -23,6 +27,7 @@ contract LiquidityCycleManagerTest is Test {
             makeAddr("community"),
             makeAddr("development")
         );
+        genesisReserve.configureToken(address(alp));
         manager = new LiquidityCycleManager(alp);
         alp.configureLiquidityCycleManager(address(manager));
         alp.configureMainPair(pair);

@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ALPToken} from "../src/ALPToken.sol";
+import {GenesisReserve} from "../src/GenesisReserve.sol";
 
 contract ALPTokenTest is Test {
     address internal reserve = makeAddr("reserve");
@@ -15,9 +16,13 @@ contract ALPTokenTest is Test {
     address internal community = makeAddr("community");
     address internal development = makeAddr("development");
     ALPToken internal alp;
+    GenesisReserve internal genesisReserve;
 
     function setUp() public {
+        genesisReserve = new GenesisReserve(address(this));
+        reserve = address(genesisReserve);
         alp = new ALPToken(reserve, address(this), buyback, top100, nodeAirdrop, community, development);
+        genesisReserve.configureToken(address(alp));
         alp.configureMainPair(pair);
         alp.setSellFeeExempt(reserve, true);
         vm.prank(reserve);

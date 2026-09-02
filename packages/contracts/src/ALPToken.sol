@@ -18,6 +18,8 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     error EmissionEngineAlreadyConfigured();
     error OnlyEmissionEngine(address caller);
     error OnlyLiquidityCycleManager(address caller);
+    error GenesisReserveMustBeContract(address reserve);
+    error OnlyGenesisReserve(address caller);
 
     uint256 public constant MAX_SUPPLY = 210_000_000 ether;
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -28,6 +30,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     uint16 public constant COMMUNITY_BPS = 500;
     uint16 public constant DEVELOPMENT_BPS = 200;
     address public mainPair;
+    address public immutable genesisReserve;
     address public emissionEngine;
     address public liquidityCycleManager;
     bool public buyRestrictionEnabled = true;
@@ -64,6 +67,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
                 || top100Treasury_ == address(0) || nodeAirdropTreasury_ == address(0)
                 || communityTreasury_ == address(0) || developmentTreasury_ == address(0)
         ) revert ZeroAddress();
+        if (initialReserve.code.length == 0) revert GenesisReserveMustBeContract(initialReserve);
         if (BUYBACK_BPS + TOP100_BPS + NODE_AIRDROP_BPS + COMMUNITY_BPS + DEVELOPMENT_BPS != SELL_FEE_BPS) {
             revert InvalidFeeConfiguration();
         }
@@ -72,6 +76,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         nodeAirdropTreasury = nodeAirdropTreasury_;
         communityTreasury = communityTreasury_;
         developmentTreasury = developmentTreasury_;
+        genesisReserve = initialReserve;
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _mint(initialReserve, MAX_SUPPLY);
     }
@@ -133,6 +138,12 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         if (msg.sender != liquidityCycleManager) revert OnlyLiquidityCycleManager(msg.sender);
         _burn(account, amount);
         emit ProtocolBurned(account, amount, msg.sender);
+    }
+
+    function burnFromGenesisReserve(uint256 amount) external {
+        if (msg.sender != genesisReserve) revert OnlyGenesisReserve(msg.sender);
+        _burn(genesisReserve, amount);
+        emit ProtocolBurned(genesisReserve, amount, msg.sender);
     }
 
     function _update(address from, address to, uint256 value) internal override {

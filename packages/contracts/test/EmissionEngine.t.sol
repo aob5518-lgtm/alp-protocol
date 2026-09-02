@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {ALPToken} from "../src/ALPToken.sol";
+import {GenesisReserve} from "../src/GenesisReserve.sol";
 import {GlobalComputeEngine} from "../src/GlobalComputeEngine.sol";
 import {EmissionEngine} from "../src/EmissionEngine.sol";
 import {MockPair} from "./mocks/MockPair.sol";
@@ -13,9 +14,12 @@ contract EmissionEngineTest is Test {
     GlobalComputeEngine internal compute;
     EmissionEngine internal engine;
     MockPair internal pair;
+    GenesisReserve internal genesisReserve;
 
     function setUp() public {
         pair = new MockPair();
+        genesisReserve = new GenesisReserve(address(this));
+        reserve = address(genesisReserve);
         alp = new ALPToken(
             reserve,
             address(this),
@@ -25,6 +29,7 @@ contract EmissionEngineTest is Test {
             makeAddr("community"),
             makeAddr("development")
         );
+        genesisReserve.configureToken(address(alp));
         alp.configureMainPair(address(pair));
         alp.setSellFeeExempt(reserve, true);
         compute = new GlobalComputeEngine(alp, address(this));

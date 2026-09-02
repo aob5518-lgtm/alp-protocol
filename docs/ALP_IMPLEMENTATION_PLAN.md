@@ -11,7 +11,7 @@ This checklist tracks the second-round acceptance remediation. Contract arithmet
 - [x] Differential rewards use a monotonic `highestPaidRateBps` path algorithm; total paid never exceeds the highest reached tier rate.
 - [x] Liquidity cycles take an independent balance snapshot at the start of each of four cycles.
 - [x] P2P transfers retain the sender's active liquidity obligation; protocol and sell transfers remain narrowly exempt.
-- [ ] Fixed genesis supply is held by a restricted GenesisReserve with no arbitrary wallet withdrawal.
+- [x] Fixed genesis supply is held by a restricted GenesisReserve with no arbitrary wallet withdrawal.
 - [ ] Liquidity allocation reaches a real Pancake V2 add-liquidity flow using a configured, no-mint ALP source and permanent LP lock.
 - [ ] Main-pair bootstrap enforces the 0.0001 USDT ALP target price and one-time configuration.
 - [x] Token privileged operations are narrowed to configured emission and cycle-manager entry points.
