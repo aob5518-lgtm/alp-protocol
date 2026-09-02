@@ -21,6 +21,7 @@
 - [ ] Global compute reward index, compensation strategies, emission/burn epoch settlement, and claims.
 - [x] Initial fixed-supply token, registry, vault, launch-pool, global compute, compensation, and epoch-settlement implementation.
 - [x] Sponsor registry, 20-level referral reward engine, and production configuration guard.
+- [x] Chainlink price adapter with stale-data and incomplete-round rejection.
 - [ ] Tier, node, Top100 Merkle, liquidity-cycle, buyback controls, and full integration tests.
 - [ ] Foundry unit, fuzz, invariant, and fork tests.
 

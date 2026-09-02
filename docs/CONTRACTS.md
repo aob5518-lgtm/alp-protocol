@@ -10,6 +10,7 @@
 - `EmissionEngine`: permissionless daily MainPair reserve settlement, burn, emission transfer, compute index update, and pair sync.
 - `SponsorRegistry` / `ReferralRewardEngine`: irreversible sponsor bindings, effective-direct unlock depth, 20-level fixed schedule, and configurable USDT/compute reward split.
 - `ProductionConfigValidator`: prevents production activation until an oracle, MainPair, Safe, timelock, compensation strategy, node funding source, and final reward split are recorded.
+- `ChainlinkOracleAdapter`: normalizes configured USD feeds to 18 decimals and rejects zero/negative answers, incomplete rounds, and data older than the configured maximum age.
 
 ## Privilege model
 
