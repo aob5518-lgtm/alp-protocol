@@ -17,6 +17,7 @@
 - `Top100Distributor`: distributes the Top100 treasury by an indexer-produced Merkle snapshot. Every leaf binds epoch, rank, wallet, effective compute, and amount; only the Safe-authorized root manager can submit a root.
 - `DifferentialRewardEngine`: follows a Position's sponsor path for at most 20 levels and pays only `max(upper tier rate - lower tier rate, 0)` from the configured Reward Treasury. It records each position as processed, so a lower tier's entitlement is never paid twice as a higher tier's reward.
 - `LiquidityCycleManager`: begins on a wallet's first ALP receipt, credits gross ALP sold to four 15-day cycles (20%, 15%, 10%, 5%), and lets anyone settle an overdue shortfall. A shortfall burns the current wallet balance; any remainder is durable burn debt that automatically consumes future ALP receipts. The manager is configured once in `ALPToken` and receives only a narrow burn role.
+- `BuybackExecutor`: queues exact token-pair trades before a delay, restricts input to the Asset Buyback Treasury token and only whitelisted routers/tokens, applies per-token limits, and requires each execution's `minimumOut` to meet an Oracle-derived slippage floor.
 
 ## Privilege model
 
