@@ -26,6 +26,7 @@
 - [x] V1–V9 Tier volume ledger with largest-branch exclusion and configurable volume base for new deployments.
 - [x] Node registry and independently funded, Merkle-snapshot node-dividend claims.
 - [x] Top100 Merkle distributor with rank/compute snapshot leaves and one-time claims.
+- [x] Tier differential reward engine with non-overlapping 20-level rate deltas.
 - [ ] Tier, node, Top100 Merkle, liquidity-cycle, buyback controls, and full integration tests.
 - [ ] Foundry unit, fuzz, invariant, and fork tests.
 

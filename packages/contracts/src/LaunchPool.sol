@@ -14,6 +14,7 @@ import {ICompensationStrategy} from "./interfaces/ICompensationStrategy.sol";
 import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
 import {IGlobalComputeEngine} from "./interfaces/IGlobalComputeEngine.sol";
 import {ITierEngine} from "./interfaces/ITierEngine.sol";
+import {IDifferentialRewardEngine} from "./interfaces/IDifferentialRewardEngine.sol";
 import {SponsorRegistry} from "./SponsorRegistry.sol";
 import {ReferralRewardEngine} from "./ReferralRewardEngine.sol";
 
@@ -60,6 +61,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
     SponsorRegistry public immutable sponsorRegistry;
     ReferralRewardEngine public immutable referralRewardEngine;
     ITierEngine public immutable tierEngine;
+    IDifferentialRewardEngine public immutable differentialRewardEngine;
     address public immutable rewardTreasury;
     address public immutable liquidityTreasury;
     uint64 public immutable launchTime;
@@ -95,6 +97,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         SponsorRegistry sponsorRegistry_,
         ReferralRewardEngine referralRewardEngine_,
         ITierEngine tierEngine_,
+        IDifferentialRewardEngine differentialRewardEngine_,
         address rewardTreasury_,
         address liquidityTreasury_,
         uint256 computeWeightE18_
@@ -104,6 +107,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
                 || address(computeEngine_) == address(0) || address(compensationStrategy_) == address(0)
                 || address(sponsorRegistry_) == address(0) || address(referralRewardEngine_) == address(0)
                 || address(tierEngine_) == address(0)
+                || address(differentialRewardEngine_) == address(0)
                 || rewardTreasury_ == address(0) || liquidityTreasury_ == address(0)
         ) revert InvalidAddress();
         if (computeWeightE18_ == 0 || computeWeightE18_ > 10 * WAD) revert InvalidWeight();
@@ -120,6 +124,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         sponsorRegistry = sponsorRegistry_;
         referralRewardEngine = referralRewardEngine_;
         tierEngine = tierEngine_;
+        differentialRewardEngine = differentialRewardEngine_;
         rewardTreasury = rewardTreasury_;
         liquidityTreasury = liquidityTreasury_;
         launchTime = assetConfig.launchTime;
@@ -180,6 +185,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         sponsorRegistry.activateContributor(msg.sender);
         referralRewardEngine.distribute(globalPositionId, msg.sender, usdtAmount);
         tierEngine.recordPosition(msg.sender, usdtAmount, totalValueUSDT);
+        differentialRewardEngine.distribute(globalPositionId, msg.sender, usdtAmount);
         emit PositionCreated(
             positionId, globalPositionId, msg.sender, partnerAmount, usdtAmount, totalValueUSDT, effectiveCompute, factorE18
         );

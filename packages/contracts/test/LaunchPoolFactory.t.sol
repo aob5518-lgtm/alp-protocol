@@ -13,6 +13,7 @@ import {LaunchPoolFactory} from "../src/LaunchPoolFactory.sol";
 import {LaunchPool} from "../src/LaunchPool.sol";
 import {LinearDailyCompensationStrategy} from "../src/strategies/LinearDailyCompensationStrategy.sol";
 import {TierEngine} from "../src/TierEngine.sol";
+import {DifferentialRewardEngine} from "../src/DifferentialRewardEngine.sol";
 
 contract LaunchPoolFactoryTest is Test {
     address internal treasury = makeAddr("rewardTreasury");
@@ -29,6 +30,7 @@ contract LaunchPoolFactoryTest is Test {
     SponsorRegistry internal sponsors;
     ReferralRewardEngine internal referral;
     TierEngine internal tiers;
+    DifferentialRewardEngine internal differential;
     LaunchPoolFactory internal factory;
     LaunchPool internal pool;
 
@@ -44,13 +46,15 @@ contract LaunchPoolFactoryTest is Test {
         sponsors = new SponsorRegistry(address(this));
         referral = new ReferralRewardEngine(usdt, treasury, sponsors, compute, address(this), true);
         tiers = new TierEngine(sponsors, TierEngine.VolumeBase.USDT_CONTRIBUTION, address(this));
-        factory = new LaunchPoolFactory(address(this), registry, usdt, compute, sponsors, referral, tiers);
+        differential = new DifferentialRewardEngine(usdt, treasury, sponsors, tiers, address(this));
+        factory = new LaunchPoolFactory(address(this), registry, usdt, compute, sponsors, referral, tiers, differential);
 
         vault.grantFactory(address(factory));
         compute.grantRole(compute.POOL_FACTORY_ROLE(), address(factory));
         sponsors.grantRole(sponsors.POOL_FACTORY_ROLE(), address(factory));
         referral.grantRole(referral.POOL_FACTORY_ROLE(), address(factory));
         tiers.grantRole(tiers.POOL_FACTORY_ROLE(), address(factory));
+        differential.grantRole(differential.POOL_FACTORY_ROLE(), address(factory));
         registry.registerAsset(
             AssetRegistry.AssetConfig({
                 token: address(card),

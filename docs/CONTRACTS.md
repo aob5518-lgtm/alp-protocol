@@ -15,6 +15,7 @@
 - `TierEngine`: records each Position's configured volume basis through at most 20 uplines, maintains total/direct-branch/largest-branch volume, and derives the fixed V1–V9 small-district tier without off-chain calculations.
 - `NodeRegistry` / `NodeDividendDistributor`: records Small/Big nodes and distributes dividends from a separately funded node treasury using an immutable per-epoch Merkle root, snapshot block, node ownership check, and one-time claim state. This module does not charge users or infer the unresolved node funding source.
 - `Top100Distributor`: distributes the Top100 treasury by an indexer-produced Merkle snapshot. Every leaf binds epoch, rank, wallet, effective compute, and amount; only the Safe-authorized root manager can submit a root.
+- `DifferentialRewardEngine`: follows a Position's sponsor path for at most 20 levels and pays only `max(upper tier rate - lower tier rate, 0)` from the configured Reward Treasury. It records each position as processed, so a lower tier's entitlement is never paid twice as a higher tier's reward.
 
 ## Privilege model
 
