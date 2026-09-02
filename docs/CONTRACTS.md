@@ -14,6 +14,7 @@
 - `ChainlinkOracleAdapter`: normalizes configured USD feeds to 18 decimals and rejects zero/negative answers, incomplete rounds, and data older than the configured maximum age.
 - `TierEngine`: records each Position's configured volume basis through at most 20 uplines, maintains total/direct-branch/largest-branch volume, and derives the fixed V1–V9 small-district tier without off-chain calculations.
 - `NodeRegistry` / `NodeDividendDistributor`: records Small/Big nodes and distributes dividends from a separately funded node treasury using an immutable per-epoch Merkle root, snapshot block, node ownership check, and one-time claim state. This module does not charge users or infer the unresolved node funding source.
+- `Top100Distributor`: distributes the Top100 treasury by an indexer-produced Merkle snapshot. Every leaf binds epoch, rank, wallet, effective compute, and amount; only the Safe-authorized root manager can submit a root.
 
 ## Privilege model
 
