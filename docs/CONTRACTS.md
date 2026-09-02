@@ -6,6 +6,7 @@
 - `AssetRegistry`: governance registry keyed by asset ID. It records token, oracle, vault, launch time, risk status, and lifecycle state.
 - `PartnerAssetVault`: per-partner-asset custody with sealed LOCK, BURN, LIQUIDITY, TREASURY, or REDEEM policy after its first contribution.
 - `LaunchPool`: immutable partner-token/USDT 50/50 quoting and contribution workflow, including token decimal normalization, price validity checks, slippage ceiling, and immutable compensation/compute-weight snapshot.
+- `LaunchPoolFactory`: creates pools for registered assets and uses narrowly scoped factory roles to authorize the new pool in the vault, compute, sponsor, and referral modules. A registry pause is checked again at position creation, not only at deployment.
 - `GlobalComputeEngine`: O(1) global reward-index accounting and user claims; it never loops over positions at emission time.
 - `EmissionEngine`: permissionless daily MainPair reserve settlement, burn, emission transfer, compute index update, and pair sync.
 - `SponsorRegistry` / `ReferralRewardEngine`: irreversible sponsor bindings, effective-direct unlock depth, 20-level fixed schedule, and configurable USDT/compute reward split.

@@ -13,6 +13,8 @@ import {IPriceOracleAdapter} from "./interfaces/IPriceOracleAdapter.sol";
 import {ICompensationStrategy} from "./interfaces/ICompensationStrategy.sol";
 import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
 import {IGlobalComputeEngine} from "./interfaces/IGlobalComputeEngine.sol";
+import {SponsorRegistry} from "./SponsorRegistry.sol";
+import {ReferralRewardEngine} from "./ReferralRewardEngine.sol";
 
 /// @notice Immutable per-asset pool. The compensation method and compute weight cannot change after deployment.
 contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
@@ -46,6 +48,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         PositionStatus status;
     }
 
+    AssetRegistry public immutable registry;
     uint256 public immutable assetId;
     IERC20Metadata public immutable partnerToken;
     IERC20Metadata public immutable usdt;
@@ -53,6 +56,8 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
     IPartnerAssetVault public immutable vault;
     IGlobalComputeEngine public immutable computeEngine;
     ICompensationStrategy public immutable compensationStrategy;
+    SponsorRegistry public immutable sponsorRegistry;
+    ReferralRewardEngine public immutable referralRewardEngine;
     address public immutable rewardTreasury;
     address public immutable liquidityTreasury;
     uint64 public immutable launchTime;
@@ -80,23 +85,27 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
 
     constructor(
         address initialOwner,
-        AssetRegistry registry,
+        AssetRegistry registry_,
         uint256 assetId_,
         IERC20Metadata usdt_,
         IGlobalComputeEngine computeEngine_,
         ICompensationStrategy compensationStrategy_,
+        SponsorRegistry sponsorRegistry_,
+        ReferralRewardEngine referralRewardEngine_,
         address rewardTreasury_,
         address liquidityTreasury_,
         uint256 computeWeightE18_
     ) Ownable(initialOwner) {
         if (
-            initialOwner == address(0) || address(registry) == address(0) || address(usdt_) == address(0)
+            initialOwner == address(0) || address(registry_) == address(0) || address(usdt_) == address(0)
                 || address(computeEngine_) == address(0) || address(compensationStrategy_) == address(0)
+                || address(sponsorRegistry_) == address(0) || address(referralRewardEngine_) == address(0)
                 || rewardTreasury_ == address(0) || liquidityTreasury_ == address(0)
         ) revert InvalidAddress();
         if (computeWeightE18_ == 0 || computeWeightE18_ > 10 * WAD) revert InvalidWeight();
-        AssetRegistry.AssetConfig memory assetConfig = registry.asset(assetId_);
+        AssetRegistry.AssetConfig memory assetConfig = registry_.asset(assetId_);
         if (assetConfig.launchStatus != AssetRegistry.LaunchStatus.ACTIVE) revert AssetUnavailable(assetId_);
+        registry = registry_;
         assetId = assetId_;
         partnerToken = IERC20Metadata(assetConfig.token);
         oracle = IPriceOracleAdapter(assetConfig.oracle);
@@ -104,6 +113,8 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         usdt = usdt_;
         computeEngine = computeEngine_;
         compensationStrategy = compensationStrategy_;
+        sponsorRegistry = sponsorRegistry_;
+        referralRewardEngine = referralRewardEngine_;
         rewardTreasury = rewardTreasury_;
         liquidityTreasury = liquidityTreasury_;
         launchTime = assetConfig.launchTime;
@@ -131,6 +142,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         returns (uint256 positionId)
     {
         if (block.timestamp < launchTime) revert PoolNotLive(launchTime);
+        if (!registry.canCreatePosition(assetId)) revert AssetUnavailable(assetId);
         (uint256 partnerAmount, uint256 usdtAmount,) = quote(totalValueUSDT);
         if (partnerAmount > maxPartnerTokenAmount) revert PartnerTokenSlippage(partnerAmount, maxPartnerTokenAmount);
         uint256 rewardTreasuryAmount = usdtAmount * HALF_BPS / BPS_DENOMINATOR;
@@ -160,6 +172,8 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         });
         activePositionCount++;
         computeEngine.addPosition(globalPositionId, msg.sender, effectiveCompute);
+        sponsorRegistry.activateContributor(msg.sender);
+        referralRewardEngine.distribute(globalPositionId, msg.sender, usdtAmount);
         emit PositionCreated(
             positionId, globalPositionId, msg.sender, partnerAmount, usdtAmount, totalValueUSDT, effectiveCompute, factorE18
         );

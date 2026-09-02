@@ -12,6 +12,7 @@ contract SponsorRegistry is AccessControl {
     error SponsorChainTooDeep();
 
     bytes32 public constant POOL_ROLE = keccak256("POOL_ROLE");
+    bytes32 public constant POOL_FACTORY_ROLE = keccak256("POOL_FACTORY_ROLE");
     uint256 public constant MAX_GRAPH_TRAVERSAL = 100;
 
     mapping(address => address) public sponsorOf;
@@ -28,6 +29,11 @@ contract SponsorRegistry is AccessControl {
 
     function bindSponsor(address sponsor) external {
         _bind(msg.sender, sponsor);
+    }
+
+    function registerPool(address pool) external onlyRole(POOL_FACTORY_ROLE) {
+        if (pool == address(0)) revert ZeroAddress();
+        _grantRole(POOL_ROLE, pool);
     }
 
     /// @notice Enables a pool to atomically bind the sponsor provided at first valid position creation.

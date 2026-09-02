@@ -18,6 +18,7 @@ contract ReferralRewardEngine is AccessControl, ReentrancyGuard {
     error AlreadyProcessed(uint256 positionId);
 
     bytes32 public constant POOL_ROLE = keccak256("POOL_ROLE");
+    bytes32 public constant POOL_FACTORY_ROLE = keccak256("POOL_FACTORY_ROLE");
     bytes32 private constant REFERRAL_POSITION_NAMESPACE = keccak256("ALP_REFERRAL_COMPUTE");
     uint16 public constant BPS_DENOMINATOR = 10_000;
     uint8 public constant MAX_LEVELS = 20;
@@ -71,6 +72,11 @@ contract ReferralRewardEngine is AccessControl, ReentrancyGuard {
         rewardComputeBps = computeBps;
         rewardSplitConfigured = true;
         emit RewardSplitConfigured(usdtBps, computeBps, true);
+    }
+
+    function registerPool(address pool) external onlyRole(POOL_FACTORY_ROLE) {
+        if (pool == address(0)) revert ZeroAddress();
+        _grantRole(POOL_ROLE, pool);
     }
 
     /// @param referredPositionId Globally unique position key, not a pool-local sequence number.

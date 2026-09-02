@@ -22,6 +22,7 @@
 - [x] Initial fixed-supply token, registry, vault, launch-pool, global compute, compensation, and epoch-settlement implementation.
 - [x] Sponsor registry, 20-level referral reward engine, and production configuration guard.
 - [x] Chainlink price adapter with stale-data and incomplete-round rejection.
+- [x] Launch Pool Factory and end-to-end 50/50 position creation with registry risk checks and referral activation.
 - [ ] Tier, node, Top100 Merkle, liquidity-cycle, buyback controls, and full integration tests.
 - [ ] Foundry unit, fuzz, invariant, and fork tests.
 

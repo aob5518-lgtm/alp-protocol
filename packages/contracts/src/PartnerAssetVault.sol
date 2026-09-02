@@ -5,10 +5,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
 
 /// @notice Per-asset custody endpoint. Its configured policy is sealed after its first contribution.
-contract PartnerAssetVault is Ownable2Step, IPartnerAssetVault {
+contract PartnerAssetVault is Ownable2Step, AccessControl, IPartnerAssetVault {
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
@@ -17,6 +18,8 @@ contract PartnerAssetVault is Ownable2Step, IPartnerAssetVault {
     error InvalidStrategy();
 
     enum Strategy { LOCK, BURN, LIQUIDITY, TREASURY, REDEEM }
+
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
     IERC20 public immutable asset;
     Strategy public strategy;
@@ -36,14 +39,26 @@ contract PartnerAssetVault is Ownable2Step, IPartnerAssetVault {
         Ownable(initialOwner)
     {
         if (initialOwner == address(0) || address(asset_) == address(0)) revert ZeroAddress();
+        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         asset = asset_;
         _setStrategy(strategy_, strategyRecipient_);
+    }
+
+    function grantFactory(address factory) external onlyOwner {
+        if (factory == address(0)) revert ZeroAddress();
+        _grantRole(FACTORY_ROLE, factory);
     }
 
     function setPoolAuthorization(address pool, bool allowed) external onlyOwner {
         if (pool == address(0)) revert ZeroAddress();
         authorizedPool[pool] = allowed;
         emit PoolAuthorizationUpdated(pool, allowed);
+    }
+
+    function registerPool(address pool) external onlyRole(FACTORY_ROLE) {
+        if (pool == address(0)) revert ZeroAddress();
+        authorizedPool[pool] = true;
+        emit PoolAuthorizationUpdated(pool, true);
     }
 
     function configureStrategy(Strategy strategy_, address recipient) external onlyOwner {

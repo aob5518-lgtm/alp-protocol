@@ -18,6 +18,7 @@ contract GlobalComputeEngine is AccessControl, ReentrancyGuard, IGlobalComputeEn
     error InvalidCompute();
 
     bytes32 public constant POOL_ROLE = keccak256("POOL_ROLE");
+    bytes32 public constant POOL_FACTORY_ROLE = keccak256("POOL_FACTORY_ROLE");
     bytes32 public constant EMISSION_ROLE = keccak256("EMISSION_ROLE");
     uint256 public constant ACC_PRECISION = 1e27;
 
@@ -57,6 +58,11 @@ contract GlobalComputeEngine is AccessControl, ReentrancyGuard, IGlobalComputeEn
         });
         globalEffectiveCompute += effectiveCompute;
         emit PositionAdded(positionId, user, effectiveCompute);
+    }
+
+    function registerPool(address pool) external onlyRole(POOL_FACTORY_ROLE) {
+        if (pool == address(0)) revert ZeroAddress();
+        _grantRole(POOL_ROLE, pool);
     }
 
     function notifyEmission(uint256 amount) external onlyRole(EMISSION_ROLE) {
