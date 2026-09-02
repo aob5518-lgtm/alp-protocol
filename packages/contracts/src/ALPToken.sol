@@ -15,6 +15,9 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     error ALPBuyRestricted(address buyer);
     error InvalidFeeConfiguration();
     error LiquidityCycleManagerAlreadyConfigured();
+    error EmissionEngineAlreadyConfigured();
+    error OnlyEmissionEngine(address caller);
+    error OnlyLiquidityCycleManager(address caller);
 
     uint256 public constant MAX_SUPPLY = 210_000_000 ether;
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -24,10 +27,8 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     uint16 public constant NODE_AIRDROP_BPS = 400;
     uint16 public constant COMMUNITY_BPS = 500;
     uint16 public constant DEVELOPMENT_BPS = 200;
-    bytes32 public constant EMISSION_ENGINE_ROLE = keccak256("EMISSION_ENGINE_ROLE");
-    bytes32 public constant LIQUIDITY_CYCLE_ROLE = keccak256("LIQUIDITY_CYCLE_ROLE");
-
     address public mainPair;
+    address public emissionEngine;
     address public liquidityCycleManager;
     bool public buyRestrictionEnabled = true;
     mapping(address => bool) public buyWhitelist;
@@ -47,6 +48,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     event ProtocolBurned(address indexed account, uint256 amount, address indexed engine);
     event ProtocolTransferred(address indexed from, address indexed to, uint256 amount, address engine);
     event LiquidityCycleManagerConfigured(address indexed manager);
+    event EmissionEngineConfigured(address indexed engine);
 
     constructor(
         address initialReserve,
@@ -107,20 +109,30 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         emit LiquidityCycleManagerConfigured(manager);
     }
 
-    /// @notice Restricted to the configured epoch engine; no mint capability exists anywhere in this token.
-    function protocolBurn(address account, uint256 amount) external {
-        if (!hasRole(EMISSION_ENGINE_ROLE, msg.sender) && !hasRole(LIQUIDITY_CYCLE_ROLE, msg.sender)) {
-            _checkRole(EMISSION_ENGINE_ROLE, msg.sender);
-        }
-        _burn(account, amount);
-        emit ProtocolBurned(account, amount, msg.sender);
+    function configureEmissionEngine(address engine) external onlyOwner {
+        if (engine == address(0)) revert ZeroAddress();
+        if (emissionEngine != address(0)) revert EmissionEngineAlreadyConfigured();
+        emissionEngine = engine;
+        emit EmissionEngineConfigured(engine);
     }
 
-    /// @notice Moves ALP out of the configured liquidity reserve for a settled emission.
-    /// @dev This bypasses the buy restriction only for the explicitly granted epoch engine role.
-    function protocolTransfer(address from, address to, uint256 amount) external onlyRole(EMISSION_ENGINE_ROLE) {
-        super._update(from, to, amount);
-        emit ProtocolTransferred(from, to, amount, msg.sender);
+    function burnFromMainPair(uint256 amount) external {
+        if (msg.sender != emissionEngine) revert OnlyEmissionEngine(msg.sender);
+        _burn(mainPair, amount);
+        emit ProtocolBurned(mainPair, amount, msg.sender);
+    }
+
+    function transferEmission(address recipient, uint256 amount) external {
+        if (msg.sender != emissionEngine) revert OnlyEmissionEngine(msg.sender);
+        if (recipient == address(0)) revert ZeroAddress();
+        super._update(mainPair, recipient, amount);
+        emit ProtocolTransferred(mainPair, recipient, amount, msg.sender);
+    }
+
+    function forceBurnForLiquidityCycle(address account, uint256 amount) external {
+        if (msg.sender != liquidityCycleManager) revert OnlyLiquidityCycleManager(msg.sender);
+        _burn(account, amount);
+        emit ProtocolBurned(account, amount, msg.sender);
     }
 
     function _update(address from, address to, uint256 value) internal override {
@@ -144,6 +156,15 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
             if (liquidityCycleManager != address(0)) ILiquidityCycleManager(liquidityCycleManager).onAlpSold(from, value);
             emit SellFeeCollected(from, value, feeAmount);
             return;
+        }
+        // Ordinary wallet-to-wallet movement must preserve the sender's active
+        // liquidity-cycle reserve. Pair sells are handled above and explicitly
+        // credited as valid cycle activity; configured protocol transfers use
+        // their narrow dedicated entry points instead of this path.
+        if (
+            liquidityCycleManager != address(0) && from != address(0) && to != address(0) && from != pair && to != pair
+        ) {
+            ILiquidityCycleManager(liquidityCycleManager).beforeAlpTransfer(from, to, value);
         }
         super._update(from, to, value);
         if (liquidityCycleManager != address(0) && from != address(0) && to != address(0)) {

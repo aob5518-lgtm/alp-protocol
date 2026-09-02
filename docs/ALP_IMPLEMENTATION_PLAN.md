@@ -1,5 +1,48 @@
 # ALP implementation plan
 
+## SECOND ROUND REMEDIATION
+
+Status: **BSC Testnet development only. Not production ready.**
+
+This checklist tracks the second-round acceptance remediation. Contract arithmetic and custody remain the source of truth; indexer, API, admin, and UI may only derive state from contracts and indexed events.
+
+### P0 — Economic integrity and custody
+
+- [x] Differential rewards use a monotonic `highestPaidRateBps` path algorithm; total paid never exceeds the highest reached tier rate.
+- [x] Liquidity cycles take an independent balance snapshot at the start of each of four cycles.
+- [x] P2P transfers retain the sender's active liquidity obligation; protocol and sell transfers remain narrowly exempt.
+- [ ] Fixed genesis supply is held by a restricted GenesisReserve with no arbitrary wallet withdrawal.
+- [ ] Liquidity allocation reaches a real Pancake V2 add-liquidity flow using a configured, no-mint ALP source and permanent LP lock.
+- [ ] Main-pair bootstrap enforces the 0.0001 USDT ALP target price and one-time configuration.
+- [x] Token privileged operations are narrowed to configured emission and cycle-manager entry points.
+- [ ] Emission activation requires compute; deferred emission is accounted for rather than stranded.
+- [ ] Explicit Day-60 emission schedule and governance approval gate are documented and enforced for production.
+- [ ] Buyback supports timelocked, whitelisted multi-hop execution with independent oracle checks.
+- [ ] OracleRouter supports Chainlink and Pancake V2 TWAP assets with stale, liquidity, and deviation checks.
+- [ ] Asset immutable fields seal after first active pool; mutable risk/oracle changes remain governed.
+- [ ] ProtocolController and ProductionConfigValidator are wired as real production and emergency-pause gates.
+- [ ] Referral, tier, solvency, Top100, node, and fee invariants are covered by tests.
+
+### P1 — Operable BSC testnet protocol
+
+- [ ] Testnet deployment scripts, verified address book, router/pair integration, and permanent LP proof.
+- [ ] PostgreSQL schema, indexer with reorg handling, API read models, and reconciliation jobs.
+- [ ] SIWE/RBAC admin app with Safe proposal generation and immutable audit log.
+- [ ] Real wagmi/viem wallet integration and chain-derived user/public protocol data.
+
+### P2 — Product, monitoring, and verification
+
+- [ ] App Router web pages, asset/position details, cycle guidance, network graph pagination, Top100, and nodes.
+- [ ] `next-intl` message catalogs for `en-US` and `zh-CN`; no component-local ad-hoc translation pairs.
+- [ ] Shared UI package, mobile wallet flow, accessibility states, loading/error handling, and data visualization.
+- [ ] Economics and attack simulations, fuzz/invariant/integration/fork tests, CI, Docker, monitoring, and full documentation.
+
+### Completion evidence
+
+- [ ] `forge test` passes after every material contract stage.
+- [ ] `pnpm typecheck` and `pnpm build` pass after every material application stage.
+- [ ] No claim of production readiness without external audit, Safe, timelock, approved production configuration, and actual mainnet deployment.
+
 ## Delivery rules
 
 - Contract arithmetic and custody are the source of truth; the database and UI are derived views.

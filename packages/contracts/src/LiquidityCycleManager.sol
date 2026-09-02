@@ -4,8 +4,10 @@ pragma solidity 0.8.30;
 import {ALPToken} from "./ALPToken.sol";
 import {ILiquidityCycleManager} from "./interfaces/ILiquidityCycleManager.sol";
 
-/// @notice Permissionless settlement for the four post-receipt liquidity cycles.
-/// @dev Transferred-away balances become a burn debt which is settled on future ALP receipts.
+/// @notice Enforces four independent, 15-day post-receipt liquidity cycles.
+/// @dev A cycle snapshot is taken before any balance-changing transfer at or after
+/// its start. Therefore incoming ALP during a cycle is intentionally deferred to
+/// the next cycle's snapshot rather than increasing the current obligation.
 contract LiquidityCycleManager is ILiquidityCycleManager {
     error ZeroAddress();
     error OnlyToken(address caller);
@@ -13,6 +15,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
     error CycleNotMature(uint8 cycle, uint256 requiredTime, uint256 currentTime);
     error CycleAlreadySettled(address account, uint8 cycle);
     error InvalidCycle(uint8 cycle);
+    error LiquidityObligationViolation(address account, uint256 remainingBalance, uint256 requiredReserve);
 
     uint16 public constant BPS_DENOMINATOR = 10_000;
     uint64 public constant CYCLE_DURATION = 15 days;
@@ -20,17 +23,22 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
 
     struct AccountCycle {
         uint64 startedAt;
-        uint256 baselineAmount;
-        uint256 burnDebt;
-        uint8 settledMask;
+        uint64[4] cycleStartTime;
+        uint256[4] cycleBaseline;
+        uint256[4] requiredAmount;
         uint256[4] soldAmount;
         uint256[4] forcedBurned;
+        uint256 burnDebt;
+        uint8 settledMask;
     }
 
     ALPToken public immutable alp;
     mapping(address => AccountCycle) private _cycles;
 
     event CycleStarted(address indexed account, uint256 baselineAmount, uint64 startedAt);
+    event CycleSnapshotTaken(
+        address indexed account, uint8 indexed cycle, uint64 cycleStartTime, uint256 baselineAmount, uint256 requiredAmount
+    );
     event SellCredited(address indexed account, uint8 indexed cycle, uint256 grossAmount, uint256 cycleSoldAmount);
     event ForcedBurnSettled(
         address indexed account, uint8 indexed cycle, uint256 requiredAmount, uint256 soldAmount, uint256 burnedNow, uint256 burnDebt
@@ -47,51 +55,85 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
         _;
     }
 
-    function onAlpReceived(address account, uint256 amount) external onlyToken {
+    /// @notice Called after a recipient balance increases. First receipt starts cycle one;
+    /// later incoming ALP does not mutate any existing cycle baseline.
+    function onAlpReceived(address account, uint256) external onlyToken {
         AccountCycle storage cycle = _cycles[account];
         if (cycle.startedAt == 0) {
             cycle.startedAt = uint64(block.timestamp);
-            cycle.baselineAmount = amount;
-            emit CycleStarted(account, amount, cycle.startedAt);
+            cycle.cycleStartTime[0] = cycle.startedAt;
+            uint256 baseline = alp.balanceOf(account);
+            cycle.cycleBaseline[0] = baseline;
+            cycle.requiredAmount[0] = baseline * cycleRequirementBps(0) / BPS_DENOMINATOR;
+            emit CycleStarted(account, baseline, cycle.startedAt);
+            emit CycleSnapshotTaken(account, 0, cycle.startedAt, baseline, cycle.requiredAmount[0]);
         }
         _settleDebt(account, cycle);
+    }
+
+    /// @notice Called by ALP before an ordinary wallet transfer. Snapshots are made
+    /// before balance movement, then the sender must retain the current obligation.
+    function beforeAlpTransfer(address from, address to, uint256 amount) external onlyToken {
+        _syncSnapshots(from, _cycles[from]);
+        if (to != from) _syncSnapshots(to, _cycles[to]);
+
+        AccountCycle storage cycle = _cycles[from];
+        if (cycle.startedAt == 0) return;
+        uint256 reserve = _outstandingObligation(cycle, currentCycle(from));
+        if (reserve == 0) return;
+        uint256 balance = alp.balanceOf(from);
+        uint256 remainingBalance = amount > balance ? 0 : balance - amount;
+        if (remainingBalance < reserve) {
+            revert LiquidityObligationViolation(from, remainingBalance, reserve);
+        }
     }
 
     function onAlpSold(address account, uint256 grossAmount) external onlyToken {
         AccountCycle storage cycle = _cycles[account];
         if (cycle.startedAt == 0) return;
+        _syncSnapshots(account, cycle);
         uint8 current = currentCycle(account);
         if (current >= CYCLE_COUNT) return;
         cycle.soldAmount[current] += grossAmount;
         emit SellCredited(account, current, grossAmount, cycle.soldAmount[current]);
     }
 
-    /// @notice Anyone (including a keeper) can settle an overdue cycle for an account.
+    /// @notice Permissionless snapshot function for keepers/UI. It can be invoked
+    /// after a cycle starts and is idempotent.
+    function snapshotCycles(address account) external {
+        _syncSnapshots(account, _cycles[account]);
+    }
+
+    /// @notice Anyone can settle an overdue cycle; missed sells are burned or carried as debt.
     function settleOverdueCycle(address account, uint8 cycleIndex) external returns (uint256 burnedNow) {
         if (cycleIndex >= CYCLE_COUNT) revert InvalidCycle(cycleIndex);
         AccountCycle storage cycle = _cycles[account];
         if (cycle.startedAt == 0) revert CycleNotStarted(account);
+        _syncSnapshots(account, cycle);
         uint256 dueAt = uint256(cycle.startedAt) + uint256(cycleIndex + 1) * CYCLE_DURATION;
         if (block.timestamp < dueAt) revert CycleNotMature(cycleIndex, dueAt, block.timestamp);
         uint8 flag = uint8(1 << cycleIndex);
         if (cycle.settledMask & flag != 0) revert CycleAlreadySettled(account, cycleIndex);
         cycle.settledMask |= flag;
-        uint256 requiredAmount = cycle.baselineAmount * cycleRequirementBps(cycleIndex) / BPS_DENOMINATOR;
-        uint256 missingAmount = requiredAmount > cycle.soldAmount[cycleIndex] ? requiredAmount - cycle.soldAmount[cycleIndex] : 0;
-        cycle.burnDebt += missingAmount;
+        uint256 required = cycle.requiredAmount[cycleIndex];
+        uint256 missing = required > cycle.soldAmount[cycleIndex] ? required - cycle.soldAmount[cycleIndex] : 0;
+        cycle.burnDebt += missing;
         burnedNow = _settleDebt(account, cycle);
         cycle.forcedBurned[cycleIndex] = burnedNow;
-        emit ForcedBurnSettled(
-            account, cycleIndex, requiredAmount, cycle.soldAmount[cycleIndex], burnedNow, cycle.burnDebt
-        );
+        emit ForcedBurnSettled(account, cycleIndex, required, cycle.soldAmount[cycleIndex], burnedNow, cycle.burnDebt);
     }
 
     function currentCycle(address account) public view returns (uint8) {
         AccountCycle storage cycle = _cycles[account];
         if (cycle.startedAt == 0) return CYCLE_COUNT;
-        uint256 elapsed = block.timestamp - cycle.startedAt;
-        uint256 index = elapsed / CYCLE_DURATION;
+        uint256 index = (block.timestamp - cycle.startedAt) / CYCLE_DURATION;
         return index >= CYCLE_COUNT ? CYCLE_COUNT : uint8(index);
+    }
+
+    function outstandingObligation(address account) public view returns (uint256) {
+        AccountCycle storage cycle = _cycles[account];
+        if (cycle.startedAt == 0) return 0;
+        return _outstandingObligation(cycle, currentCycle(account));
     }
 
     function cycleRequirementBps(uint8 cycleIndex) public pure returns (uint16) {
@@ -108,7 +150,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
         returns (uint64 startedAt, uint256 baselineAmount, uint256 burnDebt, uint8 settledMask)
     {
         AccountCycle storage cycle = _cycles[account];
-        return (cycle.startedAt, cycle.baselineAmount, cycle.burnDebt, cycle.settledMask);
+        return (cycle.startedAt, cycle.cycleBaseline[0], cycle.burnDebt, cycle.settledMask);
     }
 
     function cycleProgress(address account, uint8 cycleIndex)
@@ -118,10 +160,43 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
     {
         if (cycleIndex >= CYCLE_COUNT) revert InvalidCycle(cycleIndex);
         AccountCycle storage cycle = _cycles[account];
-        requiredAmount = cycle.baselineAmount * cycleRequirementBps(cycleIndex) / BPS_DENOMINATOR;
-        soldAmount = cycle.soldAmount[cycleIndex];
-        forcedBurned = cycle.forcedBurned[cycleIndex];
-        settled = cycle.settledMask & uint8(1 << cycleIndex) != 0;
+        return (
+            cycle.requiredAmount[cycleIndex],
+            cycle.soldAmount[cycleIndex],
+            cycle.forcedBurned[cycleIndex],
+            cycle.settledMask & uint8(1 << cycleIndex) != 0
+        );
+    }
+
+    function cycleSnapshot(address account, uint8 cycleIndex)
+        external
+        view
+        returns (uint64 startTime, uint256 baseline, uint256 required)
+    {
+        if (cycleIndex >= CYCLE_COUNT) revert InvalidCycle(cycleIndex);
+        AccountCycle storage cycle = _cycles[account];
+        return (cycle.cycleStartTime[cycleIndex], cycle.cycleBaseline[cycleIndex], cycle.requiredAmount[cycleIndex]);
+    }
+
+    function _syncSnapshots(address account, AccountCycle storage cycle) private {
+        if (cycle.startedAt == 0) return;
+        for (uint8 i = 1; i < CYCLE_COUNT; ++i) {
+            if (cycle.cycleStartTime[i] != 0) continue;
+            uint64 startTime = cycle.startedAt + uint64(i) * CYCLE_DURATION;
+            if (block.timestamp < startTime) break;
+            uint256 baseline = alp.balanceOf(account);
+            cycle.cycleStartTime[i] = startTime;
+            cycle.cycleBaseline[i] = baseline;
+            cycle.requiredAmount[i] = baseline * cycleRequirementBps(i) / BPS_DENOMINATOR;
+            emit CycleSnapshotTaken(account, i, startTime, baseline, cycle.requiredAmount[i]);
+        }
+    }
+
+    function _outstandingObligation(AccountCycle storage cycle, uint8 cycleIndex) private view returns (uint256) {
+        if (cycleIndex >= CYCLE_COUNT || cycle.cycleStartTime[cycleIndex] == 0) return 0;
+        uint256 required = cycle.requiredAmount[cycleIndex];
+        uint256 sold = cycle.soldAmount[cycleIndex];
+        return required > sold ? required - sold : 0;
     }
 
     function _settleDebt(address account, AccountCycle storage cycle) private returns (uint256 burnedNow) {
@@ -131,7 +206,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
         burnedNow = balance < debt ? balance : debt;
         if (burnedNow != 0) {
             cycle.burnDebt = debt - burnedNow;
-            alp.protocolBurn(account, burnedNow);
+            alp.forceBurnForLiquidityCycle(account, burnedNow);
             emit BurnDebtSettled(account, burnedNow, cycle.burnDebt);
         }
     }

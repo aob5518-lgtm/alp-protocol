@@ -26,6 +26,7 @@ contract DifferentialRewardEngine is AccessControl, ReentrancyGuard, IDifferenti
     SponsorRegistry public immutable sponsorRegistry;
     TierEngine public immutable tierEngine;
     mapping(uint256 => bool) public processedPosition;
+    mapping(uint256 => uint256) public totalDifferentialPaid;
 
     event DifferentialRewardPaid(
         uint256 indexed positionId,
@@ -36,6 +37,7 @@ contract DifferentialRewardEngine is AccessControl, ReentrancyGuard, IDifferenti
         uint16 differentialBps,
         uint256 amount
     );
+    event DifferentialDistributionCompleted(uint256 indexed positionId, uint16 highestTierRateBps, uint256 totalPaid);
 
     constructor(IERC20 rewardToken_, address rewardTreasury_, SponsorRegistry sponsorRegistry_, TierEngine tierEngine_, address admin) {
         if (
@@ -64,19 +66,27 @@ contract DifferentialRewardEngine is AccessControl, ReentrancyGuard, IDifferenti
         processedPosition[positionId] = true;
         address lower = user;
         address upper = sponsorRegistry.sponsorOf(lower);
+        uint16 highestPaidRateBps;
+        uint256 totalPaid;
         for (uint8 level = 1; level <= MAX_LEVELS && upper != address(0); ++level) {
             uint8 upperTier = tierEngine.tierOf(upper);
             uint8 lowerTier = tierEngine.tierOf(lower);
             uint16 upperRate = tierEngine.tierDefinition(upperTier).rewardBps;
-            uint16 lowerRate = tierEngine.tierDefinition(lowerTier).rewardBps;
-            uint16 differentialBps = upperRate > lowerRate ? upperRate - lowerRate : 0;
+            // Never compare only against the immediate lower sponsor. The paid-rate watermark
+            // makes rates monotonic along the complete sponsor path, so the aggregate payout
+            // is bounded by the highest reached tier rate.
+            uint16 differentialBps = upperRate > highestPaidRateBps ? upperRate - highestPaidRateBps : 0;
             if (differentialBps != 0) {
                 uint256 amount = rewardBase * differentialBps / BPS_DENOMINATOR;
                 if (amount != 0) rewardToken.safeTransferFrom(rewardTreasury, upper, amount);
+                totalPaid += amount;
+                highestPaidRateBps = upperRate;
                 emit DifferentialRewardPaid(positionId, upper, level, upperTier, lowerTier, differentialBps, amount);
             }
             lower = upper;
             upper = sponsorRegistry.sponsorOf(upper);
         }
+        totalDifferentialPaid[positionId] = totalPaid;
+        emit DifferentialDistributionCompleted(positionId, highestPaidRateBps, totalPaid);
     }
 }

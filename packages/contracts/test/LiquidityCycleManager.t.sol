@@ -24,7 +24,6 @@ contract LiquidityCycleManagerTest is Test {
             makeAddr("development")
         );
         manager = new LiquidityCycleManager(alp);
-        alp.grantRole(alp.LIQUIDITY_CYCLE_ROLE(), address(manager));
         alp.configureLiquidityCycleManager(address(manager));
         alp.configureMainPair(pair);
         alp.setSellFeeExempt(reserve, true);
@@ -60,8 +59,10 @@ contract LiquidityCycleManagerTest is Test {
     function testUnfundedForcedBurnBecomesDebtAndBurnsFutureReceipts() public {
         vm.prank(reserve);
         alp.transfer(user, 100 ether);
-        vm.prank(user);
-        alp.transfer(recipient, 100 ether);
+        // An extreme protocol-side burn can still leave a debt; ordinary P2P
+        // transfers cannot create this state because they retain the obligation.
+        vm.prank(address(manager));
+        alp.forceBurnForLiquidityCycle(user, 100 ether);
         vm.warp(block.timestamp + 15 days);
         manager.settleOverdueCycle(user, 0);
         (,, uint256 debt,) = manager.cycleState(user);
@@ -72,5 +73,44 @@ contract LiquidityCycleManagerTest is Test {
         (,, debt,) = manager.cycleState(user);
         assertEq(alp.balanceOf(user), 0);
         assertEq(debt, 10 ether);
+    }
+
+    function testP2PTransferCannotEscapeCurrentCycleObligation() public {
+        vm.prank(reserve);
+        alp.transfer(user, 100 ether);
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LiquidityCycleManager.LiquidityObligationViolation.selector, user, 19 ether, 20 ether
+            )
+        );
+        alp.transfer(recipient, 81 ether);
+
+        vm.prank(user);
+        alp.transfer(recipient, 80 ether);
+        assertEq(alp.balanceOf(user), 20 ether);
+        assertEq(manager.outstandingObligation(user), 20 ether);
+    }
+
+    function testEachCycleTakesAnIndependentSnapshotBeforeIncomingTransfers() public {
+        vm.prank(reserve);
+        alp.transfer(user, 100 ether);
+        vm.warp(block.timestamp + 15 days);
+
+        // The first movement in cycle two snapshots the 100 ALP balance.
+        vm.prank(user);
+        alp.transfer(recipient, 1 ether);
+        (uint64 startTime, uint256 baseline, uint256 required) = manager.cycleSnapshot(user, 1);
+        assertEq(startTime, uint64(block.timestamp));
+        assertEq(baseline, 100 ether);
+        assertEq(required, 15 ether);
+
+        // ALP received during this cycle stays out of the current baseline.
+        vm.prank(reserve);
+        alp.transfer(user, 100 ether);
+        (, baseline, required) = manager.cycleSnapshot(user, 1);
+        assertEq(baseline, 100 ether);
+        assertEq(required, 15 ether);
     }
 }

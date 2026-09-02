@@ -86,9 +86,9 @@ contract EmissionEngine is Ownable2Step {
             revert InsufficientPairReserve(reserveBefore, burnAmount + emissionAmount);
         }
 
-        if (burnAmount != 0) alp.protocolBurn(mainPair, burnAmount);
+        if (burnAmount != 0) alp.burnFromMainPair(burnAmount);
         if (emissionAmount != 0) {
-            alp.protocolTransfer(mainPair, address(computeEngine), emissionAmount);
+            alp.transferEmission(address(computeEngine), emissionAmount);
             computeEngine.notifyEmission(emissionAmount);
         }
         IPancakeV2Pair(mainPair).sync();

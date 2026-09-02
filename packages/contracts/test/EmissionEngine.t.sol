@@ -29,7 +29,7 @@ contract EmissionEngineTest is Test {
         alp.setSellFeeExempt(reserve, true);
         compute = new GlobalComputeEngine(alp, address(this));
         engine = new EmissionEngine(alp, compute, address(pair), 1 days, address(this));
-        alp.grantRole(alp.EMISSION_ENGINE_ROLE(), address(engine));
+        alp.configureEmissionEngine(address(engine));
         compute.grantRole(compute.EMISSION_ROLE(), address(engine));
         vm.prank(reserve);
         alp.transfer(address(pair), 10_000 ether);
