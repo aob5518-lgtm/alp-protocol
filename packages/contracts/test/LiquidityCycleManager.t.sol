@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { ALPToken } from "../src/ALPToken.sol";
 import { GenesisReserve } from "../src/GenesisReserve.sol";
 import { LiquidityCycleManager } from "../src/LiquidityCycleManager.sol";
+import { ProtocolExemptionRegistry } from "../src/ProtocolExemptionRegistry.sol";
 
 contract LiquidityCycleManagerTest is Test {
     address internal reserve = makeAddr("reserve");
@@ -121,5 +122,30 @@ contract LiquidityCycleManagerTest is Test {
         (, baseline, required) = manager.cycleSnapshot(user, 1);
         assertEq(baseline, 100 ether);
         assertEq(required, 15 ether);
+    }
+
+    function testFirstSellOfCycleTwoUsesPreSellBalanceAsBaseline() public {
+        vm.prank(reserve);
+        alp.transfer(user, 100 ether);
+        vm.warp(block.timestamp + 15 days);
+
+        vm.prank(user);
+        alp.transfer(pair, 10 ether);
+
+        (, uint256 baseline, uint256 required) = manager.cycleSnapshot(user, 1);
+        assertEq(baseline, 100 ether);
+        assertEq(required, 15 ether);
+    }
+
+    function testProtocolExemptRecipientDoesNotStartLiquidityCycle() public {
+        ProtocolExemptionRegistry registry = new ProtocolExemptionRegistry(address(this));
+        registry.setProtocolExempt(address(manager), true);
+        registry.sealProtocolExemptions();
+        alp.configureProtocolExemptionRegistry(address(registry));
+
+        vm.prank(reserve);
+        alp.transfer(address(manager), 100 ether);
+        (uint64 startedAt,,,) = manager.cycleState(address(manager));
+        assertEq(startedAt, 0);
     }
 }

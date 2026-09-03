@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import { ALPToken } from "./ALPToken.sol";
 import { ILiquidityCycleManager } from "./interfaces/ILiquidityCycleManager.sol";
+import { ProtocolExemptionRegistry } from "./ProtocolExemptionRegistry.sol";
 
 /// @notice Enforces four independent, 15-day post-receipt liquidity cycles.
 /// @dev A cycle snapshot is taken before any balance-changing transfer at or after
@@ -18,6 +19,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
     error LiquidityObligationViolation(
         address account, uint256 remainingBalance, uint256 requiredReserve
     );
+    error ExemptionRegistryAlreadyConfigured();
 
     uint16 public constant BPS_DENOMINATOR = 10_000;
     uint64 public constant CYCLE_DURATION = 15 days;
@@ -35,6 +37,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
     }
 
     ALPToken public immutable alp;
+    ProtocolExemptionRegistry public protocolExemptionRegistry;
     mapping(address => AccountCycle) private _cycles;
 
     event CycleStarted(address indexed account, uint256 baselineAmount, uint64 startedAt);
@@ -63,6 +66,14 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
         alp = alp_;
     }
 
+    function configureProtocolExemptionRegistry(address registry) external onlyToken {
+        if (registry == address(0)) revert ZeroAddress();
+        if (address(protocolExemptionRegistry) != address(0)) {
+            revert ExemptionRegistryAlreadyConfigured();
+        }
+        protocolExemptionRegistry = ProtocolExemptionRegistry(registry);
+    }
+
     modifier onlyToken() {
         if (msg.sender != address(alp)) revert OnlyToken(msg.sender);
         _;
@@ -71,6 +82,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
     /// @notice Called after a recipient balance increases. First receipt starts cycle one;
     /// later incoming ALP does not mutate any existing cycle baseline.
     function onAlpReceived(address account, uint256) external onlyToken {
+        if (_isProtocolExempt(account)) return;
         AccountCycle storage cycle = _cycles[account];
         if (cycle.startedAt == 0) {
             cycle.startedAt = uint64(block.timestamp);
@@ -87,6 +99,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
     /// @notice Called by ALP before an ordinary wallet transfer. Snapshots are made
     /// before balance movement, then the sender must retain the current obligation.
     function beforeAlpTransfer(address from, address to, uint256 amount) external onlyToken {
+        if (_isProtocolExempt(from)) return;
         _syncSnapshots(from, _cycles[from]);
         if (to != from) _syncSnapshots(to, _cycles[to]);
 
@@ -101,14 +114,25 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
         }
     }
 
+    /// @notice Called by ALPToken while the seller still owns the gross amount.
+    function beforeAlpSell(address account) external onlyToken {
+        if (_isProtocolExempt(account)) return;
+        _syncSnapshots(account, _cycles[account]);
+    }
+
     function onAlpSold(address account, uint256 grossAmount) external onlyToken {
+        if (_isProtocolExempt(account)) return;
         AccountCycle storage cycle = _cycles[account];
         if (cycle.startedAt == 0) return;
-        _syncSnapshots(account, cycle);
         uint8 current = currentCycle(account);
         if (current >= CYCLE_COUNT) return;
         cycle.soldAmount[current] += grossAmount;
         emit SellCredited(account, current, grossAmount, cycle.soldAmount[current]);
+    }
+
+    function _isProtocolExempt(address account) private view returns (bool) {
+        ProtocolExemptionRegistry registry = protocolExemptionRegistry;
+        return address(registry) != address(0) && registry.protocolExempt(account);
     }
 
     /// @notice Permissionless snapshot function for keepers/UI. It can be invoked

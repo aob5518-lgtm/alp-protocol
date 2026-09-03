@@ -23,6 +23,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     error LiquidityBootstrapperAlreadyConfigured();
     error OnlyLiquidityBootstrapper(address caller);
     error SellFeeExemptionsSealed();
+    error BuyRestrictionConfigSealed();
 
     uint256 public constant MAX_SUPPLY = 210_000_000 ether;
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -38,6 +39,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     address public emissionEngine;
     address public liquidityCycleManager;
     bool public buyRestrictionEnabled = true;
+    bool public buyRestrictionConfigSealed;
     mapping(address => bool) public buyWhitelist;
     mapping(address => bool) public sellFeeExempt;
     bool public sellFeeExemptionsSealed;
@@ -53,6 +55,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     event SellFeeExemptionUpdated(address indexed account, bool exempt);
     event SellFeeExemptionsSealActivated();
     event BuyRestrictionUpdated(bool enabled);
+    event BuyRestrictionConfigSealActivated();
     event SellFeeCollected(address indexed seller, uint256 grossAmount, uint256 feeAmount);
     event ProtocolBurned(address indexed account, uint256 amount, address indexed engine);
     event ProtocolTransferred(
@@ -104,7 +107,9 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     }
 
     function setBuyWhitelist(address account, bool allowed) external onlyOwner {
+        if (buyRestrictionConfigSealed) revert BuyRestrictionConfigSealed();
         if (account == address(0)) revert ZeroAddress();
+        if (allowed && account.code.length == 0) revert GenesisReserveMustBeContract(account);
         buyWhitelist[account] = allowed;
         emit BuyWhitelistUpdated(account, allowed);
     }
@@ -124,8 +129,16 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     }
 
     function setBuyRestrictionEnabled(bool enabled) external onlyOwner {
+        if (buyRestrictionConfigSealed) revert BuyRestrictionConfigSealed();
         buyRestrictionEnabled = enabled;
         emit BuyRestrictionUpdated(enabled);
+    }
+
+    function sealBuyRestrictionConfig() external onlyOwner {
+        if (buyRestrictionConfigSealed) revert BuyRestrictionConfigSealed();
+        if (!buyRestrictionEnabled) revert InvalidFeeConfiguration();
+        buyRestrictionConfigSealed = true;
+        emit BuyRestrictionConfigSealActivated();
     }
 
     function configureLiquidityCycleManager(address manager) external onlyOwner {
@@ -133,6 +146,11 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         if (liquidityCycleManager != address(0)) revert LiquidityCycleManagerAlreadyConfigured();
         liquidityCycleManager = manager;
         emit LiquidityCycleManagerConfigured(manager);
+    }
+
+    function configureProtocolExemptionRegistry(address registry) external onlyOwner {
+        if (liquidityCycleManager == address(0)) revert ZeroAddress();
+        ILiquidityCycleManager(liquidityCycleManager).configureProtocolExemptionRegistry(registry);
     }
 
     function configureEmissionEngine(address engine) external onlyOwner {
@@ -193,6 +211,9 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
             revert ALPBuyRestricted(to);
         }
         if (pair != address(0) && to == pair && from != address(0) && !sellFeeExempt[from]) {
+            if (liquidityCycleManager != address(0)) {
+                ILiquidityCycleManager(liquidityCycleManager).beforeAlpSell(from);
+            }
             uint256 buybackFee = value * BUYBACK_BPS / BPS_DENOMINATOR;
             uint256 top100Fee = value * TOP100_BPS / BPS_DENOMINATOR;
             uint256 nodeAirdropFee = value * NODE_AIRDROP_BPS / BPS_DENOMINATOR;

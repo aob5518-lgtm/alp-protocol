@@ -21,7 +21,7 @@ contract TierSnapshotRegistryTest is Test {
         uint8 tier = 2;
         bytes32 leaf =
             keccak256(abi.encode(id, blockNumber, user, total, address(0), largest, small, tier));
-        registry.publish(id, blockNumber, leaf, keccak256("dataset"));
+        registry.publish(id, blockNumber, leaf, keccak256("dataset"), registry.TIER_RULES_V1_HASH());
         vm.warp(block.timestamp + 30 minutes);
         registry.finalize(id);
         registry.activateUserTier(
@@ -31,8 +31,71 @@ contract TierSnapshotRegistryTest is Test {
     }
 
     function testSameSnapshotBlockCannotHaveTwoRoots() public {
-        registry.publish(1, 123, keccak256("one"), keccak256("dataset"));
+        bytes32 rulesHash = registry.TIER_RULES_V1_HASH();
+        registry.publish(1, 123, keccak256("one"), keccak256("dataset"), rulesHash);
         vm.expectRevert(TierSnapshotRegistry.InvalidSnapshot.selector);
-        registry.publish(2, 123, keccak256("two"), keccak256("dataset2"));
+        registry.publish(2, 123, keccak256("two"), keccak256("dataset2"), rulesHash);
+    }
+
+    function testNewFinalizedSnapshotDoesNotResetPreviouslyVerifiedTier() public {
+        uint64 id = 1;
+        uint64 blockNumber = 123;
+        uint8 tier = 2;
+        bytes32 leaf = keccak256(
+            abi.encode(
+                id, blockNumber, user, 20_000 ether, address(0), 8_000 ether, 12_000 ether, tier
+            )
+        );
+        registry.publish(id, blockNumber, leaf, keccak256("dataset"), registry.TIER_RULES_V1_HASH());
+        vm.warp(block.timestamp + 30 minutes + 1);
+        registry.finalize(id);
+        registry.activateUserTier(
+            id, user, 20_000 ether, address(0), 8_000 ether, 12_000 ether, tier, new bytes32[](0)
+        );
+
+        registry.publish(
+            2, 124, keccak256("new-root"), keccak256("dataset2"), registry.TIER_RULES_V1_HASH()
+        );
+        vm.warp(block.timestamp + 60 minutes + 2);
+        registry.finalize(2);
+        assertEq(registry.currentTier(user), tier);
+    }
+
+    function testTierOnlyUpgrades() public {
+        uint64 id = 1;
+        uint8 tier = 2;
+        bytes32 leaf = keccak256(
+            abi.encode(
+                id, uint64(123), user, 20_000 ether, address(0), 8_000 ether, 12_000 ether, tier
+            )
+        );
+        registry.publish(id, 123, leaf, keccak256("dataset"), registry.TIER_RULES_V1_HASH());
+        vm.warp(block.timestamp + 30 minutes);
+        registry.finalize(id);
+        registry.activateUserTier(
+            id, user, 20_000 ether, address(0), 8_000 ether, 12_000 ether, tier, new bytes32[](0)
+        );
+        vm.expectRevert(TierSnapshotRegistry.TierNotUpgrade.selector);
+        registry.activateUserTier(
+            id, user, 20_000 ether, address(0), 8_000 ether, 12_000 ether, tier, new bytes32[](0)
+        );
+    }
+
+    function testCannotFinalizeOlderSnapshotAfterNewerSnapshot() public {
+        registry.publish(
+            1, 123, keccak256("one"), keccak256("dataset"), registry.TIER_RULES_V1_HASH()
+        );
+        registry.publish(
+            2, 124, keccak256("two"), keccak256("dataset2"), registry.TIER_RULES_V1_HASH()
+        );
+        vm.warp(block.timestamp + 30 minutes);
+        registry.finalize(2);
+        vm.expectRevert(TierSnapshotRegistry.SnapshotNotIncreasing.selector);
+        registry.finalize(1);
+    }
+
+    function testRejectsUnapprovedTierRules() public {
+        vm.expectRevert(TierSnapshotRegistry.InvalidTierRules.selector);
+        registry.publish(1, 123, keccak256("one"), keccak256("dataset"), keccak256("wrong-rules"));
     }
 }

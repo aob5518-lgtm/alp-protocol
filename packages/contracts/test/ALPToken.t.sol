@@ -5,6 +5,8 @@ import { Test } from "forge-std/Test.sol";
 import { ALPToken } from "../src/ALPToken.sol";
 import { GenesisReserve } from "../src/GenesisReserve.sol";
 
+contract WhitelistedReceiver { }
+
 contract ALPTokenTest is Test {
     address internal reserve = makeAddr("reserve");
     address internal pair = makeAddr("pair");
@@ -56,10 +58,23 @@ contract ALPTokenTest is Test {
         vm.expectRevert(abi.encodeWithSelector(ALPToken.ALPBuyRestricted.selector, buyer));
         alp.transfer(buyer, 1 ether);
 
+        vm.expectRevert(
+            abi.encodeWithSelector(ALPToken.GenesisReserveMustBeContract.selector, buyer)
+        );
         alp.setBuyWhitelist(buyer, true);
+        WhitelistedReceiver receiver = new WhitelistedReceiver();
+        alp.setBuyWhitelist(address(receiver), true);
         vm.prank(pair);
-        alp.transfer(buyer, 1 ether);
-        assertEq(alp.balanceOf(buyer), 1 ether);
+        alp.transfer(address(receiver), 1 ether);
+        assertEq(alp.balanceOf(address(receiver)), 1 ether);
+    }
+
+    function testSealedBuyRestrictionCannotBeDisabledOrWhitelistEOA() public {
+        alp.sealBuyRestrictionConfig();
+        vm.expectRevert(ALPToken.BuyRestrictionConfigSealed.selector);
+        alp.setBuyRestrictionEnabled(false);
+        vm.expectRevert(ALPToken.BuyRestrictionConfigSealed.selector);
+        alp.setBuyWhitelist(buyer, true);
     }
 
     function testFuzzSellConservesAllTokens(uint96 rawAmount) public {
