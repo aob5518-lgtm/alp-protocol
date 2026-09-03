@@ -86,6 +86,10 @@ contract LiquidityBootstrapper is Ownable2Step {
         (usedAlp, usedUsdt, lpAmount) = router.addLiquidity(
             address(alp), address(usdt), alpAmount, usdtAmount, minAlpAmount, minUsdtAmount, address(locker), deadline
         );
+        uint256 requiredUsedUsdt = requiredUsdtForAlp(usedAlp);
+        if (usedAlp == 0 || usedUsdt != requiredUsedUsdt) {
+            revert PriceRatioMismatch(usedUsdt, requiredUsedUsdt);
+        }
         IERC20(address(alp)).forceApprove(address(router), 0);
         usdt.forceApprove(address(router), 0);
         locker.recordLock(pair, lpAmount, operation);
