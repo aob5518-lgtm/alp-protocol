@@ -20,6 +20,8 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     error OnlyLiquidityCycleManager(address caller);
     error GenesisReserveMustBeContract(address reserve);
     error OnlyGenesisReserve(address caller);
+    error LiquidityBootstrapperAlreadyConfigured();
+    error OnlyLiquidityBootstrapper(address caller);
 
     uint256 public constant MAX_SUPPLY = 210_000_000 ether;
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -31,6 +33,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     uint16 public constant DEVELOPMENT_BPS = 200;
     address public mainPair;
     address public immutable genesisReserve;
+    address public liquidityBootstrapper;
     address public emissionEngine;
     address public liquidityCycleManager;
     bool public buyRestrictionEnabled = true;
@@ -52,6 +55,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     event ProtocolTransferred(address indexed from, address indexed to, uint256 amount, address engine);
     event LiquidityCycleManagerConfigured(address indexed manager);
     event EmissionEngineConfigured(address indexed engine);
+    event LiquidityBootstrapperConfigured(address indexed bootstrapper);
 
     constructor(
         address initialReserve,
@@ -119,6 +123,23 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         if (emissionEngine != address(0)) revert EmissionEngineAlreadyConfigured();
         emissionEngine = engine;
         emit EmissionEngineConfigured(engine);
+    }
+
+    function configureLiquidityBootstrapper(address bootstrapper) external onlyOwner {
+        if (bootstrapper == address(0)) revert ZeroAddress();
+        if (liquidityBootstrapper != address(0)) revert LiquidityBootstrapperAlreadyConfigured();
+        liquidityBootstrapper = bootstrapper;
+        emit LiquidityBootstrapperConfigured(bootstrapper);
+    }
+
+    function configureMainPairFromBootstrapper(address pair) external {
+        if (msg.sender != liquidityBootstrapper) revert OnlyLiquidityBootstrapper(msg.sender);
+        if (pair == address(0)) revert ZeroAddress();
+        if (mainPair != address(0)) revert MainPairAlreadyConfigured();
+        mainPair = pair;
+        buyWhitelist[pair] = true;
+        emit MainPairConfigured(pair);
+        emit BuyWhitelistUpdated(pair, true);
     }
 
     function burnFromMainPair(uint256 amount) external {

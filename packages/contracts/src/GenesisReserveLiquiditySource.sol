@@ -6,16 +6,16 @@ import {GenesisReserve} from "./GenesisReserve.sol";
 import {ILiquidityALPSource} from "./interfaces/ILiquidityALPSource.sol";
 
 /// @notice Default testnet ALP source. It moves pre-minted ALP from GenesisReserve
-/// only to the configured LiquidityManager.
+/// only to explicitly configured liquidity consumers such as the manager or
+/// one-time bootstrapper.
 contract GenesisReserveLiquiditySource is AccessControl, ILiquidityALPSource {
     error ZeroAddress();
-    error OnlyLiquidityManager(address caller);
-    error LiquidityManagerAlreadyConfigured();
+    error OnlyLiquidityConsumer(address caller);
 
     GenesisReserve public immutable genesisReserve;
-    address public liquidityManager;
+    mapping(address => bool) public liquidityConsumer;
 
-    event LiquidityManagerConfigured(address indexed manager);
+    event LiquidityConsumerUpdated(address indexed consumer, bool allowed);
     event LiquidityALPProvided(address indexed recipient, uint256 amount, bytes32 indexed operation);
 
     constructor(GenesisReserve genesisReserve_, address admin) {
@@ -24,16 +24,15 @@ contract GenesisReserveLiquiditySource is AccessControl, ILiquidityALPSource {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    function configureLiquidityManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (manager == address(0)) revert ZeroAddress();
-        if (liquidityManager != address(0)) revert LiquidityManagerAlreadyConfigured();
-        liquidityManager = manager;
-        emit LiquidityManagerConfigured(manager);
+    function setLiquidityConsumer(address consumer, bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (consumer == address(0)) revert ZeroAddress();
+        liquidityConsumer[consumer] = allowed;
+        emit LiquidityConsumerUpdated(consumer, allowed);
     }
 
     function provideLiquidityALP(address recipient, uint256 amount, bytes32 operation) external {
-        if (msg.sender != liquidityManager) revert OnlyLiquidityManager(msg.sender);
-        if (recipient != liquidityManager) revert OnlyLiquidityManager(recipient);
+        if (!liquidityConsumer[msg.sender]) revert OnlyLiquidityConsumer(msg.sender);
+        if (recipient != msg.sender) revert OnlyLiquidityConsumer(recipient);
         genesisReserve.releaseToProtocol(recipient, amount, operation);
         emit LiquidityALPProvided(recipient, amount, operation);
     }
