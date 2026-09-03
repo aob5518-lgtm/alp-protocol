@@ -52,11 +52,6 @@ contract SponsorRegistry is AccessControl {
         emit ContributorActivated(user, sponsor, newCount);
     }
 
-    function unlockedDepth(address user) external view returns (uint256) {
-        uint256 directCount = activeDirectReferralCount[user];
-        return directCount > 20 ? 20 : directCount;
-    }
-
     function _bind(address user, address sponsor) private {
         if (user == address(0) || sponsor == address(0)) revert ZeroAddress();
         if (user == sponsor) revert SelfSponsor();
