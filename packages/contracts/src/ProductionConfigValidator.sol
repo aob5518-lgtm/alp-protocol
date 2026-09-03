@@ -16,13 +16,15 @@ contract ProductionConfigValidator is AccessControl {
         address timelock;
         address compensationStrategy;
         address nodeDividendFundingSource;
+        address genesisReserve;
+        address protocolExemptionRegistry;
+        address alpToken;
+        address emissionEngine;
+        address tierSnapshotRegistry;
         bool rewardSplitConfigured;
         bool liquidityALPSourceConfigured;
         bool tierVolumeBaseApproved;
         bool tierSnapshotSystemConfigured;
-        bool emissionScheduleApproved;
-        bool protocolModulesSealed;
-        bool protocolExemptionsSealed;
         bool oracleConfigured;
         bool mainPairConfigured;
         bool treasurySafeConfigured;
@@ -33,6 +35,9 @@ contract ProductionConfigValidator is AccessControl {
 
     Configuration public configuration;
     bool public productionMode;
+    bytes32 public constant TIER_RULES_V1_HASH = keccak256(
+        "ALP_TIER_V1|TOTAL_POSITION_VALUE|UNLIMITED_DEPTH|3000:2|10000:3|30000:4|100000:5|300000:6|1000000:7|3000000:8|6000000:9|10000000:10"
+    );
 
     event ConfigurationUpdated(Configuration configuration);
     event ProductionModeEnabled(address indexed by);
@@ -54,12 +59,17 @@ contract ProductionConfigValidator is AccessControl {
     function readyForProduction() public view returns (bool) {
         Configuration memory c = configuration;
         return c.rewardSplitConfigured && c.liquidityALPSourceConfigured && c.tierVolumeBaseApproved
-            && c.tierSnapshotSystemConfigured && c.emissionScheduleApproved
-            && c.protocolModulesSealed && c.protocolExemptionsSealed && c.oracleConfigured
-            && c.mainPairConfigured && c.treasurySafeConfigured && c.timelockConfigured
-            && c.externalAuditApproved && c.auditApprovalHash != bytes32(0) && _isContract(c.oracle)
-            && _isContract(c.mainPair) && _isContract(c.treasurySafe) && _isContract(c.timelock)
-            && _isContract(c.compensationStrategy) && _isContract(c.nodeDividendFundingSource);
+            && c.tierSnapshotSystemConfigured && c.oracleConfigured && c.mainPairConfigured
+            && c.treasurySafeConfigured && c.timelockConfigured && c.externalAuditApproved
+            && c.auditApprovalHash != bytes32(0) && _isContract(c.oracle) && _isContract(c.mainPair)
+            && _isContract(c.treasurySafe) && _isContract(c.timelock)
+            && _isContract(c.compensationStrategy) && _isContract(c.nodeDividendFundingSource)
+            && _returnsTrue(c.genesisReserve, "modulesSealed()")
+            && _returnsTrue(c.protocolExemptionRegistry, "exemptionsSealed()")
+            && _returnsTrue(c.alpToken, "sellFeeExemptionsSealed()")
+            && _returnsTrue(c.alpToken, "buyRestrictionConfigSealed()")
+            && _returnsTrue(c.emissionEngine, "emissionScheduleApproved()")
+            && _returnsBytes32(c.tierSnapshotRegistry, "TIER_RULES_V1_HASH()", TIER_RULES_V1_HASH);
     }
 
     function enableProductionMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -70,5 +80,21 @@ contract ProductionConfigValidator is AccessControl {
 
     function _isContract(address account) private view returns (bool) {
         return account != address(0) && account.code.length != 0;
+    }
+
+    function _returnsTrue(address target, string memory selector) private view returns (bool) {
+        if (!_isContract(target)) return false;
+        (bool success, bytes memory result) = target.staticcall(abi.encodeWithSignature(selector));
+        return success && result.length == 32 && abi.decode(result, (bool));
+    }
+
+    function _returnsBytes32(address target, string memory selector, bytes32 expected)
+        private
+        view
+        returns (bool)
+    {
+        if (!_isContract(target)) return false;
+        (bool success, bytes memory result) = target.staticcall(abi.encodeWithSignature(selector));
+        return success && result.length == 32 && abi.decode(result, (bytes32)) == expected;
     }
 }

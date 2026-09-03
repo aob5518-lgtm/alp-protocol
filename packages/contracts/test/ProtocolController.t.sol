@@ -5,7 +5,33 @@ import { Test } from "forge-std/Test.sol";
 import { ProductionConfigValidator } from "../src/ProductionConfigValidator.sol";
 import { ProtocolController } from "../src/ProtocolController.sol";
 
-contract ProtocolConfigTarget { }
+contract ProtocolConfigTarget {
+    function modulesSealed() external pure returns (bool) {
+        return true;
+    }
+
+    function exemptionsSealed() external pure returns (bool) {
+        return true;
+    }
+
+    function sellFeeExemptionsSealed() external pure returns (bool) {
+        return true;
+    }
+
+    function buyRestrictionConfigSealed() external pure returns (bool) {
+        return true;
+    }
+
+    function emissionScheduleApproved() external pure returns (bool) {
+        return true;
+    }
+
+    function TIER_RULES_V1_HASH() external pure returns (bytes32) {
+        return keccak256(
+            "ALP_TIER_V1|TOTAL_POSITION_VALUE|UNLIMITED_DEPTH|3000:2|10000:3|30000:4|100000:5|300000:6|1000000:7|3000000:8|6000000:9|10000000:10"
+        );
+    }
+}
 
 contract ProtocolControllerTest is Test {
     ProductionConfigValidator internal validator;
@@ -29,13 +55,15 @@ contract ProtocolControllerTest is Test {
                 timelock: address(target),
                 compensationStrategy: address(target),
                 nodeDividendFundingSource: address(target),
+                genesisReserve: address(target),
+                protocolExemptionRegistry: address(target),
+                alpToken: address(target),
+                emissionEngine: address(target),
+                tierSnapshotRegistry: address(target),
                 rewardSplitConfigured: true,
                 liquidityALPSourceConfigured: true,
                 tierVolumeBaseApproved: true,
                 tierSnapshotSystemConfigured: true,
-                emissionScheduleApproved: true,
-                protocolModulesSealed: true,
-                protocolExemptionsSealed: true,
                 oracleConfigured: true,
                 mainPairConfigured: true,
                 treasurySafeConfigured: true,
