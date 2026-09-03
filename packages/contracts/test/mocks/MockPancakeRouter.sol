@@ -18,13 +18,13 @@ contract MockPancakeRouter {
         returns (uint256[] memory amounts)
     {
         require(block.timestamp <= deadline, "expired");
-        require(path.length == 2, "path");
+        require(path.length >= 2, "path");
         uint256 amountOut = amountIn * rateWad / 1e18;
         require(amountOut >= amountOutMin, "slippage");
         IERC20(path[0]).safeTransferFrom(msg.sender, address(this), amountIn);
-        IERC20(path[1]).safeTransfer(to, amountOut);
-        amounts = new uint256[](2);
+        IERC20(path[path.length - 1]).safeTransfer(to, amountOut);
+        amounts = new uint256[](path.length);
         amounts[0] = amountIn;
-        amounts[1] = amountOut;
+        for (uint256 i = 1; i < path.length; ++i) amounts[i] = i == path.length - 1 ? amountOut : amountIn;
     }
 }

@@ -50,6 +50,7 @@ contract BuybackExecutor is AccessControl, ReentrancyGuard {
     mapping(address => uint256) public maxTradeAmount;
     mapping(address => bool) public tokenWhitelist;
     mapping(bytes32 => QueuedTrade) public queuedTrade;
+    mapping(bytes32 => address[]) private _queuedPaths;
 
     event RouterWhitelistUpdated(address indexed router, bool allowed);
     event TokenConfigured(address indexed token, bool allowed, uint256 maxTradeAmount);
@@ -126,8 +127,32 @@ contract BuybackExecutor is AccessControl, ReentrancyGuard {
         onlyRole(SCHEDULER_ROLE)
         returns (bytes32 tradeId)
     {
-        _validateTrade(router, tokenIn, tokenOut, amountIn);
-        tradeId = keccak256(abi.encode(router, tokenIn, tokenOut, amountIn, block.chainid, block.timestamp));
+        address[] memory path = new address[](2);
+        path[0] = tokenIn;
+        path[1] = tokenOut;
+        return _queueTrade(router, path, amountIn);
+    }
+
+    /// @notice Queues a whitelisted Pancake V2 path. Every asset in the path has an
+    /// independent live oracle check at execution, so intermediate hops are not trusted.
+    function queueTradePath(address router, address[] calldata path, uint128 amountIn)
+        external
+        onlyRole(SCHEDULER_ROLE)
+        returns (bytes32 tradeId)
+    {
+        address[] memory copiedPath = path;
+        return _queueTrade(router, copiedPath, amountIn);
+    }
+
+    function queuedPath(bytes32 tradeId) external view returns (address[] memory) {
+        return _queuedPaths[tradeId];
+    }
+
+    function _queueTrade(address router, address[] memory path, uint128 amountIn) private returns (bytes32 tradeId) {
+        _validateTrade(router, path, amountIn);
+        address tokenIn = path[0];
+        address tokenOut = path[path.length - 1];
+        tradeId = keccak256(abi.encode(router, path, amountIn, block.chainid, block.timestamp));
         if (queuedTrade[tradeId].executableAt != 0) revert TradeAlreadyQueued(tradeId);
         uint64 executableAt = uint64(block.timestamp) + executionDelay;
         queuedTrade[tradeId] = QueuedTrade({
@@ -138,6 +163,7 @@ contract BuybackExecutor is AccessControl, ReentrancyGuard {
             executableAt: executableAt,
             executed: false
         });
+        _queuedPaths[tradeId] = path;
         emit TradeQueued(tradeId, router, tokenIn, tokenOut, amountIn, executableAt);
     }
 
@@ -147,17 +173,15 @@ contract BuybackExecutor is AccessControl, ReentrancyGuard {
         if (trade.executableAt == 0) revert TradeNotQueued(tradeId);
         if (trade.executed) revert TradeAlreadyExecuted(tradeId);
         if (block.timestamp < trade.executableAt) revert TradeNotReady(tradeId, trade.executableAt, block.timestamp);
-        _validateTrade(trade.router, trade.tokenIn, trade.tokenOut, trade.amountIn);
-        uint256 liveOracleMinimumOut = oracleMinimumOut(trade.tokenIn, trade.tokenOut, trade.amountIn);
+        address[] memory path = _queuedPaths[tradeId];
+        _validateTrade(trade.router, path, trade.amountIn);
+        uint256 liveOracleMinimumOut = _oracleMinimumOutPath(path, trade.amountIn);
         if (minimumOut < liveOracleMinimumOut) revert InsufficientMinimumOut(minimumOut, liveOracleMinimumOut);
 
         trade.executed = true;
         IERC20 inputToken = IERC20(trade.tokenIn);
         inputToken.safeTransferFrom(buybackTreasury, address(this), trade.amountIn);
         inputToken.forceApprove(trade.router, trade.amountIn);
-        address[] memory path = new address[](2);
-        path[0] = trade.tokenIn;
-        path[1] = trade.tokenOut;
         uint256[] memory amounts = IPancakeV2Router(trade.router).swapExactTokensForTokens(
             trade.amountIn, minimumOut, path, buybackRecipient, deadline
         );
@@ -168,25 +192,44 @@ contract BuybackExecutor is AccessControl, ReentrancyGuard {
     }
 
     function oracleMinimumOut(address tokenIn, address tokenOut, uint256 amountIn) public view returns (uint256) {
-        if (!oracle.isPriceValid(tokenIn)) revert PriceUnavailable(tokenIn);
-        if (!oracle.isPriceValid(tokenOut)) revert PriceUnavailable(tokenOut);
-        (uint256 priceIn,) = oracle.getPrice(tokenIn);
-        (uint256 priceOut,) = oracle.getPrice(tokenOut);
-        if (priceIn == 0) revert PriceUnavailable(tokenIn);
-        if (priceOut == 0) revert PriceUnavailable(tokenOut);
-        uint256 amountInWad = amountIn * 1e18 / (10 ** IERC20Metadata(tokenIn).decimals());
-        uint256 expectedOutWad = amountInWad * priceIn / priceOut;
-        uint256 expectedOut = expectedOutWad * (10 ** IERC20Metadata(tokenOut).decimals()) / 1e18;
-        return expectedOut * (BPS_DENOMINATOR - maxSlippageBps) / BPS_DENOMINATOR;
+        address[] memory path = new address[](2);
+        path[0] = tokenIn;
+        path[1] = tokenOut;
+        return _oracleMinimumOutPath(path, amountIn);
     }
 
-    function _validateTrade(address router, address tokenIn, address tokenOut, uint256 amountIn) private view {
+    function oracleMinimumOutPath(address[] calldata path, uint256 amountIn) external view returns (uint256) {
+        address[] memory copiedPath = path;
+        return _oracleMinimumOutPath(copiedPath, amountIn);
+    }
+
+    function _oracleMinimumOutPath(address[] memory path, uint256 amountIn) private view returns (uint256) {
+        if (path.length < 2) revert InvalidPath();
+        uint256 amount = amountIn;
+        for (uint256 i; i < path.length - 1; ++i) {
+            address tokenIn = path[i];
+            address tokenOut = path[i + 1];
+            if (tokenIn == tokenOut || !oracle.isPriceValid(tokenIn)) revert PriceUnavailable(tokenIn);
+            if (!oracle.isPriceValid(tokenOut)) revert PriceUnavailable(tokenOut);
+            (uint256 priceIn,) = oracle.getPrice(tokenIn);
+            (uint256 priceOut,) = oracle.getPrice(tokenOut);
+            if (priceIn == 0) revert PriceUnavailable(tokenIn);
+            if (priceOut == 0) revert PriceUnavailable(tokenOut);
+            uint256 amountInWad = amount * 1e18 / (10 ** IERC20Metadata(tokenIn).decimals());
+            uint256 expectedOutWad = amountInWad * priceIn / priceOut;
+            amount = expectedOutWad * (10 ** IERC20Metadata(tokenOut).decimals()) / 1e18;
+        }
+        return amount * (BPS_DENOMINATOR - maxSlippageBps) / BPS_DENOMINATOR;
+    }
+
+    function _validateTrade(address router, address[] memory path, uint256 amountIn) private view {
         if (!routerWhitelist[router]) revert RouterNotWhitelisted(router);
-        if (tokenIn != address(paymentToken)) revert InvalidPath();
-        if (!tokenWhitelist[tokenIn]) revert TokenNotWhitelisted(tokenIn);
-        if (!tokenWhitelist[tokenOut]) revert TokenNotWhitelisted(tokenOut);
-        if (tokenIn == tokenOut || amountIn == 0) revert InvalidPath();
-        uint256 maximum = maxTradeAmount[tokenIn];
+        if (path.length < 2 || path[0] != address(paymentToken) || amountIn == 0) revert InvalidPath();
+        for (uint256 i; i < path.length; ++i) {
+            if (!tokenWhitelist[path[i]]) revert TokenNotWhitelisted(path[i]);
+            if (i != 0 && path[i] == path[i - 1]) revert InvalidPath();
+        }
+        uint256 maximum = maxTradeAmount[path[0]];
         if (amountIn > maximum) revert TradeTooLarge(amountIn, maximum);
     }
 }
