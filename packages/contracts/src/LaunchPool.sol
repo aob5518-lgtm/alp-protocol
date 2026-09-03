@@ -16,6 +16,7 @@ import {IGlobalComputeEngine} from "./interfaces/IGlobalComputeEngine.sol";
 import {ITierEngine} from "./interfaces/ITierEngine.sol";
 import {IDifferentialRewardEngine} from "./interfaces/IDifferentialRewardEngine.sol";
 import {ILiquidityManager} from "./interfaces/ILiquidityManager.sol";
+import {IProtocolController} from "./interfaces/IProtocolController.sol";
 import {SponsorRegistry} from "./SponsorRegistry.sol";
 import {ReferralRewardEngine} from "./ReferralRewardEngine.sol";
 
@@ -63,6 +64,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
     ReferralRewardEngine public immutable referralRewardEngine;
     ITierEngine public immutable tierEngine;
     IDifferentialRewardEngine public immutable differentialRewardEngine;
+    IProtocolController public immutable protocolController;
     address public immutable rewardTreasury;
     ILiquidityManager public immutable liquidityManager;
     uint64 public immutable launchTime;
@@ -99,6 +101,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         ReferralRewardEngine referralRewardEngine_,
         ITierEngine tierEngine_,
         IDifferentialRewardEngine differentialRewardEngine_,
+        IProtocolController protocolController_,
         address rewardTreasury_,
         ILiquidityManager liquidityManager_,
         uint256 computeWeightE18_
@@ -108,7 +111,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
                 || address(computeEngine_) == address(0) || address(compensationStrategy_) == address(0)
                 || address(sponsorRegistry_) == address(0) || address(referralRewardEngine_) == address(0)
                 || address(tierEngine_) == address(0)
-                || address(differentialRewardEngine_) == address(0)
+                || address(differentialRewardEngine_) == address(0) || address(protocolController_) == address(0)
                 || rewardTreasury_ == address(0) || address(liquidityManager_) == address(0)
         ) revert InvalidAddress();
         if (computeWeightE18_ == 0 || computeWeightE18_ > 10 * WAD) revert InvalidWeight();
@@ -126,6 +129,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         referralRewardEngine = referralRewardEngine_;
         tierEngine = tierEngine_;
         differentialRewardEngine = differentialRewardEngine_;
+        protocolController = protocolController_;
         rewardTreasury = rewardTreasury_;
         liquidityManager = liquidityManager_;
         launchTime = assetConfig.launchTime;
@@ -152,6 +156,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         nonReentrant
         returns (uint256 positionId)
     {
+        protocolController.requireOperational();
         if (block.timestamp < launchTime) revert PoolNotLive(launchTime);
         if (!registry.canCreatePosition(assetId)) revert AssetUnavailable(assetId);
         (uint256 partnerAmount, uint256 usdtAmount,) = quote(totalValueUSDT);

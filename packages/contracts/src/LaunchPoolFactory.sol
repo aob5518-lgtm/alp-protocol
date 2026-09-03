@@ -14,6 +14,7 @@ import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
 import {TierEngine} from "./TierEngine.sol";
 import {DifferentialRewardEngine} from "./DifferentialRewardEngine.sol";
 import {ILiquidityManager} from "./interfaces/ILiquidityManager.sol";
+import {IProtocolController} from "./interfaces/IProtocolController.sol";
 
 /// @notice Creates per-asset pools and grants them only the narrow roles required for position accounting.
 contract LaunchPoolFactory is Ownable2Step {
@@ -36,6 +37,7 @@ contract LaunchPoolFactory is Ownable2Step {
     ReferralRewardEngine public immutable referralRewardEngine;
     TierEngine public immutable tierEngine;
     DifferentialRewardEngine public immutable differentialRewardEngine;
+    IProtocolController public immutable protocolController;
     mapping(uint256 => address[]) private _poolsForAsset;
     mapping(address => bool) public isPool;
 
@@ -55,14 +57,15 @@ contract LaunchPoolFactory is Ownable2Step {
         SponsorRegistry sponsorRegistry_,
         ReferralRewardEngine referralRewardEngine_,
         TierEngine tierEngine_,
-        DifferentialRewardEngine differentialRewardEngine_
+        DifferentialRewardEngine differentialRewardEngine_,
+        IProtocolController protocolController_
     ) Ownable(initialOwner) {
         if (
             initialOwner == address(0) || address(registry_) == address(0) || address(usdt_) == address(0)
                 || address(computeEngine_) == address(0) || address(sponsorRegistry_) == address(0)
                 || address(referralRewardEngine_) == address(0)
                 || address(tierEngine_) == address(0)
-                || address(differentialRewardEngine_) == address(0)
+                || address(differentialRewardEngine_) == address(0) || address(protocolController_) == address(0)
         ) revert ZeroAddress();
         registry = registry_;
         usdt = usdt_;
@@ -71,6 +74,7 @@ contract LaunchPoolFactory is Ownable2Step {
         referralRewardEngine = referralRewardEngine_;
         tierEngine = tierEngine_;
         differentialRewardEngine = differentialRewardEngine_;
+        protocolController = protocolController_;
     }
 
     function createPool(uint256 assetId, PoolConfig calldata config) external onlyOwner returns (LaunchPool pool) {
@@ -92,6 +96,7 @@ contract LaunchPoolFactory is Ownable2Step {
             referralRewardEngine,
             tierEngine,
             differentialRewardEngine,
+            protocolController,
             config.rewardTreasury,
             config.liquidityManager,
             config.computeWeightE18

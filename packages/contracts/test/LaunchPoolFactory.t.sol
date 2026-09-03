@@ -16,6 +16,9 @@ import {TierEngine} from "../src/TierEngine.sol";
 import {DifferentialRewardEngine} from "../src/DifferentialRewardEngine.sol";
 import {ILiquidityManager} from "../src/interfaces/ILiquidityManager.sol";
 import {MockLiquidityManager} from "./mocks/MockLiquidityManager.sol";
+import {ProductionConfigValidator} from "../src/ProductionConfigValidator.sol";
+import {ProtocolController} from "../src/ProtocolController.sol";
+import {IProtocolController} from "../src/interfaces/IProtocolController.sol";
 
 contract LaunchPoolFactoryTest is Test {
     address internal treasury = makeAddr("rewardTreasury");
@@ -35,6 +38,8 @@ contract LaunchPoolFactoryTest is Test {
     DifferentialRewardEngine internal differential;
     LaunchPoolFactory internal factory;
     LaunchPool internal pool;
+    ProductionConfigValidator internal validator;
+    ProtocolController internal controller;
 
     function setUp() public {
         card = new MockERC20("CARD", "CARD", 18);
@@ -50,7 +55,11 @@ contract LaunchPoolFactoryTest is Test {
         tiers = new TierEngine(sponsors, TierEngine.VolumeBase.USDT_CONTRIBUTION, address(this));
         differential = new DifferentialRewardEngine(usdt, treasury, sponsors, tiers, address(this));
         liquidity = new MockLiquidityManager();
-        factory = new LaunchPoolFactory(address(this), registry, usdt, compute, sponsors, referral, tiers, differential);
+        validator = new ProductionConfigValidator(address(this));
+        controller = new ProtocolController(validator, address(this));
+        factory = new LaunchPoolFactory(
+            address(this), registry, usdt, compute, sponsors, referral, tiers, differential, IProtocolController(address(controller))
+        );
         registry.configurePoolFactory(address(factory));
 
         vault.grantFactory(address(factory));
@@ -132,5 +141,17 @@ contract LaunchPoolFactoryTest is Test {
         invalidConfig.symbol = "NEW";
         vm.expectRevert(abi.encodeWithSelector(AssetRegistry.ImmutableAssetFieldsSealed.selector, 1));
         registry.updateAsset(1, invalidConfig);
+    }
+
+    function testProtocolEmergencyPauseBlocksNewPositionsUntilGovernanceResumes() public {
+        controller.emergencyPause();
+        vm.prank(user);
+        vm.expectRevert(ProtocolController.ProtocolPaused.selector);
+        pool.createPosition(100 ether, 25 ether);
+
+        controller.resume();
+        vm.prank(user);
+        pool.createPosition(100 ether, 25 ether);
+        assertEq(pool.nextPositionId(), 2);
     }
 }
