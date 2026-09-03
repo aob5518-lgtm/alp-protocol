@@ -40,12 +40,13 @@ contract LiquidityManagerTest is Test {
         reserve.configureToken(address(alp));
         usdt = new MockERC20("USDT", "USDT", 18);
         source = new GenesisReserveLiquiditySource(reserve, address(this));
-        locker = new PermanentLiquidityLocker(address(this), address(this));
+        locker = new PermanentLiquidityLocker(address(this));
         controller =
             new ProtocolController(new ProductionConfigValidator(address(this)), address(this));
         manager = new LiquidityManager(
             alp, usdt, source, locker, IProtocolController(address(controller)), address(this)
         );
+        locker.setLiquidityExecutor(address(manager), true);
         MockPancakeFactory factory = new MockPancakeFactory();
         router = new MockPancakeLiquidityRouter();
         pair = factory.createPair(address(alp), address(usdt));

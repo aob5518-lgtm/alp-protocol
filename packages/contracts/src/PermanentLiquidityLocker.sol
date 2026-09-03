@@ -17,10 +17,9 @@ contract PermanentLiquidityLocker is AccessControl {
     );
     event LiquidityExecutorSet(address indexed executor, bool allowed);
 
-    constructor(address liquidityManager_, address admin) {
-        if (liquidityManager_ == address(0) || admin == address(0)) revert ZeroAddress();
+    constructor(address admin) {
+        if (admin == address(0)) revert ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(LIQUIDITY_EXECUTOR_ROLE, liquidityManager_);
     }
 
     /// @notice Registers the manager and the one-time bootstrapper as the only components
