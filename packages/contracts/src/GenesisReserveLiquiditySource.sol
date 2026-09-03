@@ -4,11 +4,14 @@ pragma solidity 0.8.30;
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { GenesisReserve } from "./GenesisReserve.sol";
 import { ILiquidityALPSource } from "./interfaces/ILiquidityALPSource.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Default testnet ALP source. It moves pre-minted ALP from GenesisReserve
 /// only to explicitly configured liquidity consumers such as the manager or
 /// one-time bootstrapper.
 contract GenesisReserveLiquiditySource is AccessControl, ILiquidityALPSource {
+    using SafeERC20 for IERC20;
     error ZeroAddress();
     error OnlyLiquidityConsumer(address caller);
 
@@ -40,5 +43,11 @@ contract GenesisReserveLiquiditySource is AccessControl, ILiquidityALPSource {
         if (recipient != msg.sender) revert OnlyLiquidityConsumer(recipient);
         genesisReserve.releaseToProtocol(recipient, amount, operation);
         emit LiquidityALPProvided(recipient, amount, operation);
+    }
+
+    function returnUnusedLiquidityALP(uint256 amount) external {
+        if (!liquidityConsumer[msg.sender]) revert OnlyLiquidityConsumer(msg.sender);
+        IERC20(address(genesisReserve.token()))
+            .safeTransferFrom(msg.sender, address(genesisReserve), amount);
     }
 }

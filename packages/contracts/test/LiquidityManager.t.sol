@@ -49,6 +49,7 @@ contract LiquidityManagerTest is Test {
         MockPancakeFactory factory = new MockPancakeFactory();
         router = new MockPancakeLiquidityRouter();
         pair = factory.createPair(address(alp), address(usdt));
+        MockLiquidityPair(pair).setReserves(100 ether, 50 ether);
         router.setPair(pair);
 
         reserve.setProtocolModule(address(source), true);
@@ -66,9 +67,8 @@ contract LiquidityManagerTest is Test {
     }
 
     function testManagerUsesPreMintedALPAndPermanentlyLocksLP() public {
-        (uint256 usedAlp, uint256 usedUsdt, uint256 lpAmount) = manager.addLiquidity(
-            1, 100 ether, 50 ether, 100 ether, 50 ether, block.timestamp + 1 days
-        );
+        (uint256 usedAlp, uint256 usedUsdt, uint256 lpAmount) =
+            manager.settleLiquidity(1, 50 ether, 100 ether, 50 ether, block.timestamp + 1 days);
         assertEq(usedAlp, 100 ether);
         assertEq(usedUsdt, 50 ether);
         assertEq(manager.pendingUsdtByAsset(1), 0);
@@ -80,6 +80,13 @@ contract LiquidityManagerTest is Test {
     function testEmergencyPauseBlocksLiquidityAddition() public {
         controller.emergencyPause();
         vm.expectRevert(ProtocolController.ProtocolPaused.selector);
-        manager.addLiquidity(1, 100 ether, 50 ether, 0, 0, block.timestamp + 1 days);
+        manager.settleLiquidity(1, 50 ether, 0, 0, block.timestamp + 1 days);
+    }
+
+    function testUnusedAlpIsReturnedToGenesisReserve() public {
+        router.setAlpUsageBps(8_000);
+        manager.settleLiquidity(1, 50 ether, 0, 50 ether, block.timestamp + 1 days);
+        assertEq(alp.balanceOf(address(reserve)), 210_000_000 ether - 80 ether);
+        assertEq(alp.balanceOf(address(manager)), 0);
     }
 }

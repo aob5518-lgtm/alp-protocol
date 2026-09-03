@@ -8,16 +8,20 @@ import { ILiquidityALPSource } from "./interfaces/ILiquidityALPSource.sol";
 import { IPancakeV2Router } from "./interfaces/IPancakeV2Router.sol";
 import { PermanentLiquidityLocker } from "./PermanentLiquidityLocker.sol";
 import { IProtocolController } from "./interfaces/IProtocolController.sol";
+import { IPancakeV2Pair } from "./interfaces/IPancakeV2Pair.sol";
 
 /// @notice Adds ALP/USDT liquidity using pre-existing ALP and permanently locks LP.
 /// @dev It contains no minting, no LP withdrawal, and no arbitrary treasury withdrawal.
 contract LiquidityManager is AccessControl {
     using SafeERC20 for IERC20;
 
+    uint16 public constant BPS_DENOMINATOR = 10_000;
+
     error ZeroAddress();
     error InvalidAmount();
     error RouterNotConfigured();
     error PairNotConfigured();
+    error ReserveDeviation();
 
     bytes32 public constant LIQUIDITY_OPERATOR_ROLE = keccak256("LIQUIDITY_OPERATOR_ROLE");
     bytes32 public constant POOL_ROLE = keccak256("POOL_ROLE");
@@ -30,21 +34,29 @@ contract LiquidityManager is AccessControl {
     PermanentLiquidityLocker public immutable locker;
     IProtocolController public immutable protocolController;
     address public mainPair;
+    uint16 public maxReserveDeviationBps = 500;
+    uint256 public maxAlpPerSettlement = 10_000_000 ether;
+    uint256 public maxUsdtPerSettlement = 1_000_000 ether;
+    uint256 public minimumLiquidityBatch = 10_000 ether;
+    uint64 public maxPendingDuration = 7 days;
 
     mapping(uint256 => uint256) public pendingUsdtByAsset;
+    mapping(uint256 => uint64) public pendingSinceByAsset;
 
     event RouterConfigured(address indexed router);
     event MainPairConfigured(address indexed pair);
     event LiquidityAllocationReceived(
         uint256 indexed assetId, uint256 amount, uint256 pendingAmount
     );
-    event LiquidityAdded(
+    event LiquiditySettled(
         uint256 indexed assetId,
-        uint256 alpAmount,
-        uint256 usdtAmount,
+        uint256 requestedUsdt,
+        uint256 usedUsdt,
+        uint256 providedAlp,
+        uint256 usedAlp,
+        uint256 returnedAlp,
         uint256 lpAmount,
-        address indexed pair,
-        uint256 txEpoch
+        address indexed pair
     );
 
     constructor(
@@ -92,27 +104,55 @@ contract LiquidityManager is AccessControl {
     {
         if (amount == 0) revert InvalidAmount();
         pendingUsdtByAsset[assetId] += amount;
+        if (pendingSinceByAsset[assetId] == 0) {
+            pendingSinceByAsset[assetId] = uint64(block.timestamp);
+        }
         emit LiquidityAllocationReceived(assetId, amount, pendingUsdtByAsset[assetId]);
     }
 
-    function addLiquidity(
+    function configureSettlementLimits(
+        uint16 maxReserveDeviationBps_,
+        uint256 maxAlpPerSettlement_,
+        uint256 maxUsdtPerSettlement_,
+        uint256 minimumLiquidityBatch_,
+        uint64 maxPendingDuration_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (
+            maxReserveDeviationBps_ > BPS_DENOMINATOR || maxAlpPerSettlement_ == 0
+                || maxUsdtPerSettlement_ == 0 || maxPendingDuration_ == 0
+        ) revert InvalidAmount();
+        maxReserveDeviationBps = maxReserveDeviationBps_;
+        maxAlpPerSettlement = maxAlpPerSettlement_;
+        maxUsdtPerSettlement = maxUsdtPerSettlement_;
+        minimumLiquidityBatch = minimumLiquidityBatch_;
+        maxPendingDuration = maxPendingDuration_;
+    }
+
+    function settleLiquidity(
         uint256 assetId,
-        uint256 alpAmount,
         uint256 usdtAmount,
         uint256 minAlpAmount,
         uint256 minUsdtAmount,
         uint256 deadline
-    )
-        external
-        onlyRole(LIQUIDITY_OPERATOR_ROLE)
-        returns (uint256 usedAlp, uint256 usedUsdt, uint256 lpAmount)
-    {
+    ) external returns (uint256 usedAlp, uint256 usedUsdt, uint256 lpAmount) {
         protocolController.requireOperational();
         if (address(router) == address(0)) revert RouterNotConfigured();
         if (mainPair == address(0)) revert PairNotConfigured();
-        if (alpAmount == 0 || usdtAmount == 0 || usdtAmount > pendingUsdtByAsset[assetId]) {
+        bool keeperAllowed = pendingUsdtByAsset[assetId] >= minimumLiquidityBatch
+            || (pendingSinceByAsset[assetId] != 0
+                && block.timestamp >= pendingSinceByAsset[assetId] + maxPendingDuration);
+        if (!hasRole(LIQUIDITY_OPERATOR_ROLE, msg.sender) && !keeperAllowed) {
+            revert AccessControlUnauthorizedAccount(msg.sender, LIQUIDITY_OPERATOR_ROLE);
+        }
+        if (
+            usdtAmount == 0 || usdtAmount > pendingUsdtByAsset[assetId]
+                || usdtAmount > maxUsdtPerSettlement
+        ) {
             revert InvalidAmount();
         }
+        (uint256 reserveAlp, uint256 reserveUsdt) = _reserves();
+        uint256 alpAmount = usdtAmount * reserveAlp / reserveUsdt;
+        if (alpAmount == 0 || alpAmount > maxAlpPerSettlement) revert ReserveDeviation();
         bytes32 operation =
             keccak256(abi.encodePacked("LIQUIDITY", assetId, block.number, alpAmount, usdtAmount));
         liquidityALPSource.provideLiquidityALP(address(this), alpAmount, operation);
@@ -131,9 +171,28 @@ contract LiquidityManager is AccessControl {
         alp.forceApprove(address(router), 0);
         usdt.forceApprove(address(router), 0);
         pendingUsdtByAsset[assetId] -= usedUsdt;
+        if (pendingUsdtByAsset[assetId] == 0) pendingSinceByAsset[assetId] = 0;
+        uint256 returnedAlp = alpAmount - usedAlp;
+        if (returnedAlp != 0) {
+            alp.forceApprove(address(liquidityALPSource), returnedAlp);
+            liquidityALPSource.returnUnusedLiquidityALP(returnedAlp);
+            alp.forceApprove(address(liquidityALPSource), 0);
+        }
         locker.recordLock(mainPair, lpAmount, operation);
-        emit LiquidityAdded(
-            assetId, usedAlp, usedUsdt, lpAmount, mainPair, block.timestamp / 1 days
+        emit LiquiditySettled(
+            assetId, usdtAmount, usedUsdt, alpAmount, usedAlp, returnedAlp, lpAmount, mainPair
         );
+    }
+
+    function _reserves() private view returns (uint256 reserveAlp, uint256 reserveUsdt) {
+        IPancakeV2Pair pair = IPancakeV2Pair(mainPair);
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+        if (pair.token0() == address(alp) && pair.token1() == address(usdt)) {
+            return (reserve0, reserve1);
+        }
+        if (pair.token1() == address(alp) && pair.token0() == address(usdt)) {
+            return (reserve1, reserve0);
+        }
+        revert PairNotConfigured();
     }
 }

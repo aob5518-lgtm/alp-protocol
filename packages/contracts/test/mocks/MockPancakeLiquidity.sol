@@ -15,7 +15,7 @@ contract MockPancakeFactory {
     function createPair(address tokenA, address tokenB) external returns (address pair) {
         require(tokenA != tokenB && tokenA != address(0) && tokenB != address(0), "pair");
         require(pairs[tokenA][tokenB] == address(0), "exists");
-        pair = address(new MockLiquidityPair());
+        pair = address(new MockLiquidityPair(tokenA, tokenB));
         pairs[tokenA][tokenB] = pair;
         pairs[tokenB][tokenA] = pair;
     }
@@ -25,9 +25,15 @@ contract MockPancakeLiquidityRouter {
     using SafeERC20 for IERC20;
 
     address public pair;
+    uint16 public alpUsageBps = 10_000;
 
     function setPair(address pair_) external {
         pair = pair_;
+    }
+
+    function setAlpUsageBps(uint16 value) external {
+        require(value <= 10_000, "bps");
+        alpUsageBps = value;
     }
 
     function addLiquidity(
@@ -45,7 +51,7 @@ contract MockPancakeLiquidityRouter {
         require(pair != address(0), "pair");
         // This deterministic test router consumes exact desired amounts and mints the
         // resulting LP directly to the requested receiver.
-        amountA = amountADesired;
+        amountA = amountADesired * alpUsageBps / 10_000;
         amountB = amountBDesired;
         IERC20(tokenA).safeTransferFrom(msg.sender, address(this), amountA);
         IERC20(tokenB).safeTransferFrom(msg.sender, address(this), amountB);
