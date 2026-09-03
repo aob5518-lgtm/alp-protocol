@@ -53,4 +53,10 @@ contract TierEngineTest is Test {
         assertEq(tiers.totalNetworkVolume(root), 0);
         assertEq(tiers.largestDirectBranchVolume(root), 0);
     }
+
+    function testSnapshotRegistryCannotBeReplaced() public {
+        tiers.configureSnapshotRegistry(new TierSnapshotRegistry(0, address(this)));
+        vm.expectRevert(TierEngine.SnapshotRegistryAlreadyConfigured.selector);
+        tiers.configureSnapshotRegistry(new TierSnapshotRegistry(0, address(this)));
+    }
 }

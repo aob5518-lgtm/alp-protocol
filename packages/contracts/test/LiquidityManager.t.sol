@@ -90,4 +90,10 @@ contract LiquidityManagerTest is Test {
         assertEq(alp.balanceOf(address(reserve)), 210_000_000 ether - 80 ether);
         assertEq(alp.balanceOf(address(manager)), 0);
     }
+
+    function testLiquidityConsumersCanBeSealed() public {
+        source.sealLiquidityConsumers();
+        vm.expectRevert(GenesisReserveLiquiditySource.LiquidityConsumersSealed.selector);
+        source.setLiquidityConsumer(address(this), true);
+    }
 }

@@ -60,6 +60,8 @@ contract ProtocolControllerTest is Test {
                 alpToken: address(target),
                 emissionEngine: address(target),
                 tierSnapshotRegistry: address(target),
+                tierEngine: address(target),
+                genesisReserveLiquiditySource: address(target),
                 rewardSplitConfigured: true,
                 liquidityALPSourceConfigured: true,
                 tierVolumeBaseApproved: true,

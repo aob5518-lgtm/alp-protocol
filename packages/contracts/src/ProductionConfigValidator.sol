@@ -21,6 +21,8 @@ contract ProductionConfigValidator is AccessControl {
         address alpToken;
         address emissionEngine;
         address tierSnapshotRegistry;
+        address tierEngine;
+        address genesisReserveLiquiditySource;
         bool rewardSplitConfigured;
         bool liquidityALPSourceConfigured;
         bool tierVolumeBaseApproved;
@@ -69,6 +71,9 @@ contract ProductionConfigValidator is AccessControl {
             && _returnsTrue(c.alpToken, "sellFeeExemptionsSealed()")
             && _returnsTrue(c.alpToken, "buyRestrictionConfigSealed()")
             && _returnsTrue(c.emissionEngine, "emissionScheduleApproved()")
+            && _returnsTrue(c.genesisReserveLiquiditySource, "liquidityConsumersSealed()")
+            && _returnsAddress(c.tierEngine, "snapshotRegistry()", c.tierSnapshotRegistry)
+            && _returnsUint8(c.tierEngine, "volumeBase()", 1)
             && _returnsBytes32(c.tierSnapshotRegistry, "TIER_RULES_V1_HASH()", TIER_RULES_V1_HASH);
     }
 
@@ -96,5 +101,17 @@ contract ProductionConfigValidator is AccessControl {
         if (!_isContract(target)) return false;
         (bool success, bytes memory result) = target.staticcall(abi.encodeWithSignature(selector));
         return success && result.length == 32 && abi.decode(result, (bytes32)) == expected;
+    }
+
+    function _returnsAddress(address target, string memory selector, address expected) private view returns (bool) {
+        if (!_isContract(target)) return false;
+        (bool success, bytes memory result) = target.staticcall(abi.encodeWithSignature(selector));
+        return success && result.length == 32 && abi.decode(result, (address)) == expected;
+    }
+
+    function _returnsUint8(address target, string memory selector, uint8 expected) private view returns (bool) {
+        if (!_isContract(target)) return false;
+        (bool success, bytes memory result) = target.staticcall(abi.encodeWithSignature(selector));
+        return success && result.length == 32 && abi.decode(result, (uint8)) == expected;
     }
 }

@@ -13,15 +13,18 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 contract GenesisReserveLiquiditySource is AccessControl, ILiquidityALPSource {
     using SafeERC20 for IERC20;
     error ZeroAddress();
+    error LiquidityConsumersSealed();
     error OnlyLiquidityConsumer(address caller);
 
     GenesisReserve public immutable genesisReserve;
     mapping(address => bool) public liquidityConsumer;
+    bool public liquidityConsumersSealed;
 
     event LiquidityConsumerUpdated(address indexed consumer, bool allowed);
     event LiquidityALPProvided(
         address indexed recipient, uint256 amount, bytes32 indexed operation
     );
+    event LiquidityConsumersSealActivated();
 
     constructor(GenesisReserve genesisReserve_, address admin) {
         if (address(genesisReserve_) == address(0) || admin == address(0)) revert ZeroAddress();
@@ -33,9 +36,16 @@ contract GenesisReserveLiquiditySource is AccessControl, ILiquidityALPSource {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        if (liquidityConsumersSealed) revert LiquidityConsumersSealed();
         if (consumer == address(0)) revert ZeroAddress();
         liquidityConsumer[consumer] = allowed;
         emit LiquidityConsumerUpdated(consumer, allowed);
+    }
+
+    function sealLiquidityConsumers() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (liquidityConsumersSealed) revert LiquidityConsumersSealed();
+        liquidityConsumersSealed = true;
+        emit LiquidityConsumersSealActivated();
     }
 
     function provideLiquidityALP(address recipient, uint256 amount, bytes32 operation) external {

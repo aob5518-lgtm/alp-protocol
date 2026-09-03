@@ -10,6 +10,7 @@ import { TierSnapshotRegistry } from "./TierSnapshotRegistry.sol";
 contract TierEngine is AccessControl, ITierEngine {
     error ZeroAddress();
     error InvalidVolume();
+    error SnapshotRegistryAlreadyConfigured();
 
     bytes32 public constant POOL_ROLE = keccak256("POOL_ROLE");
     bytes32 public constant POOL_FACTORY_ROLE = keccak256("POOL_FACTORY_ROLE");
@@ -57,6 +58,7 @@ contract TierEngine is AccessControl, ITierEngine {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         if (address(registry) == address(0)) revert ZeroAddress();
+        if (address(snapshotRegistry) != address(0)) revert SnapshotRegistryAlreadyConfigured();
         snapshotRegistry = registry;
     }
 

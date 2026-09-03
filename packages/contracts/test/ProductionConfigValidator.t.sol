@@ -28,6 +28,10 @@ contract ConfigTarget {
         return approved;
     }
 
+    function liquidityConsumersSealed() external view returns (bool) { return closed; }
+    function snapshotRegistry() external view returns (address) { return address(this); }
+    function volumeBase() external pure returns (uint8) { return 1; }
+
     function TIER_RULES_V1_HASH() external pure returns (bytes32) {
         return keccak256(
             "ALP_TIER_V1|TOTAL_POSITION_VALUE|UNLIMITED_DEPTH|3000:2|10000:3|30000:4|100000:5|300000:6|1000000:7|3000000:8|6000000:9|10000000:10"
@@ -66,6 +70,8 @@ contract ProductionConfigValidatorTest is Test {
                 alpToken: address(target),
                 emissionEngine: address(target),
                 tierSnapshotRegistry: address(target),
+                tierEngine: address(target),
+                genesisReserveLiquiditySource: address(target),
                 rewardSplitConfigured: true,
                 liquidityALPSourceConfigured: true,
                 tierVolumeBaseApproved: true,
@@ -104,6 +110,8 @@ contract ProductionConfigValidatorTest is Test {
                 alpToken: makeAddr("alp"),
                 emissionEngine: makeAddr("emission"),
                 tierSnapshotRegistry: makeAddr("tierSnapshots"),
+                tierEngine: makeAddr("tierEngine"),
+                genesisReserveLiquiditySource: makeAddr("liquiditySource"),
                 rewardSplitConfigured: true,
                 liquidityALPSourceConfigured: true,
                 tierVolumeBaseApproved: true,
@@ -136,6 +144,8 @@ contract ProductionConfigValidatorTest is Test {
             alpToken: target,
             emissionEngine: target,
             tierSnapshotRegistry: target,
+            tierEngine: target,
+            genesisReserveLiquiditySource: target,
             rewardSplitConfigured: true,
             liquidityALPSourceConfigured: true,
             tierVolumeBaseApproved: true,
