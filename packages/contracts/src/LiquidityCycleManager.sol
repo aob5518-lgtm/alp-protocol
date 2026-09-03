@@ -79,7 +79,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
 
         AccountCycle storage cycle = _cycles[from];
         if (cycle.startedAt == 0) return;
-        uint256 reserve = _outstandingObligation(cycle, currentCycle(from));
+        uint256 reserve = _totalOutstandingObligation(cycle);
         if (reserve == 0) return;
         uint256 balance = alp.balanceOf(from);
         uint256 remainingBalance = amount > balance ? 0 : balance - amount;
@@ -133,7 +133,7 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
     function outstandingObligation(address account) public view returns (uint256) {
         AccountCycle storage cycle = _cycles[account];
         if (cycle.startedAt == 0) return 0;
-        return _outstandingObligation(cycle, currentCycle(account));
+        return _totalOutstandingObligation(cycle);
     }
 
     function cycleRequirementBps(uint8 cycleIndex) public pure returns (uint16) {
@@ -197,6 +197,15 @@ contract LiquidityCycleManager is ILiquidityCycleManager {
         uint256 required = cycle.requiredAmount[cycleIndex];
         uint256 sold = cycle.soldAmount[cycleIndex];
         return required > sold ? required - sold : 0;
+    }
+
+    /// @dev Includes burn debt and every taken-but-unsettled cycle, preventing cross-cycle transfer escape.
+    function _totalOutstandingObligation(AccountCycle storage cycle) private view returns (uint256 total) {
+        total = cycle.burnDebt;
+        for (uint8 i; i < CYCLE_COUNT; ++i) {
+            if (cycle.cycleStartTime[i] == 0 || cycle.settledMask & uint8(1 << i) != 0) continue;
+            total += _outstandingObligation(cycle, i);
+        }
     }
 
     function _settleDebt(address account, AccountCycle storage cycle) private returns (uint256 burnedNow) {

@@ -107,6 +107,7 @@ contract LaunchPoolFactory is Ownable2Step {
         referralRewardEngine.registerPool(address(pool));
         tierEngine.registerPool(address(pool));
         differentialRewardEngine.registerPool(address(pool));
+        config.liquidityManager.registerPool(address(pool));
         _poolsForAsset[assetId].push(address(pool));
         isPool[address(pool)] = true;
         registry.sealAsset(assetId, address(pool));

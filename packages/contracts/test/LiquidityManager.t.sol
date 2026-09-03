@@ -50,6 +50,7 @@ contract LiquidityManagerTest is Test {
         manager.configureRouter(IPancakeV2Router(address(router)));
         manager.configureMainPair(pair);
         manager.grantRole(manager.LIQUIDITY_OPERATOR_ROLE(), address(this));
+        manager.grantRole(manager.POOL_FACTORY_ROLE(), address(this));
         manager.registerPool(address(this));
         usdt.mint(address(this), 100 ether);
         usdt.transfer(address(manager), 50 ether);

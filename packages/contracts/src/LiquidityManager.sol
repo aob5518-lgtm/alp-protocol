@@ -21,6 +21,7 @@ contract LiquidityManager is AccessControl {
 
     bytes32 public constant LIQUIDITY_OPERATOR_ROLE = keccak256("LIQUIDITY_OPERATOR_ROLE");
     bytes32 public constant POOL_ROLE = keccak256("POOL_ROLE");
+    bytes32 public constant POOL_FACTORY_ROLE = keccak256("POOL_FACTORY_ROLE");
 
     IERC20 public immutable alp;
     IERC20 public immutable usdt;
@@ -78,7 +79,7 @@ contract LiquidityManager is AccessControl {
         emit MainPairConfigured(pair);
     }
 
-    function registerPool(address pool) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function registerPool(address pool) external onlyRole(POOL_FACTORY_ROLE) {
         if (pool == address(0)) revert ZeroAddress();
         _grantRole(POOL_ROLE, pool);
     }

@@ -108,6 +108,7 @@ contract LaunchPoolFactoryTest is Test {
 
         assertEq(positionId, 1);
         assertTrue(factory.isPool(address(pool)));
+        assertTrue(liquidity.registered(address(pool)));
         assertTrue(vault.authorizedPool(address(pool)));
         assertEq(card.balanceOf(address(vault)), 25 ether);
         assertEq(usdt.balanceOf(treasury), 22 ether);

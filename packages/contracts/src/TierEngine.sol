@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {SponsorRegistry} from "./SponsorRegistry.sol";
 import {ITierEngine} from "./interfaces/ITierEngine.sol";
+import {TierSnapshotRegistry} from "./TierSnapshotRegistry.sol";
 
 /// @notice Maintains 20-level referral-tree volume without unbounded traversal or database trust.
 contract TierEngine is AccessControl, ITierEngine {
@@ -23,6 +24,7 @@ contract TierEngine is AccessControl, ITierEngine {
 
     SponsorRegistry public immutable sponsorRegistry;
     VolumeBase public immutable volumeBase;
+    TierSnapshotRegistry public snapshotRegistry;
     mapping(address => uint256) public totalNetworkVolume;
     mapping(address => uint256) public largestDirectBranchVolume;
     mapping(address => address) public largestDirectBranch;
@@ -43,6 +45,12 @@ contract TierEngine is AccessControl, ITierEngine {
         sponsorRegistry = sponsorRegistry_;
         volumeBase = volumeBase_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    /// @notice Enables the unlimited-depth, indexer-generated, Merkle-verified V1-V9 authority.
+    function configureSnapshotRegistry(TierSnapshotRegistry registry) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (address(registry) == address(0)) revert ZeroAddress();
+        snapshotRegistry = registry;
     }
 
     function registerPool(address pool) external onlyRole(POOL_FACTORY_ROLE) {
@@ -95,6 +103,7 @@ contract TierEngine is AccessControl, ITierEngine {
     }
 
     function tierOf(address user) public view returns (uint8) {
+        if (address(snapshotRegistry) != address(0)) return snapshotRegistry.currentTier(user);
         uint256 smallDistrictVolume = smallDistrictVolumeOf(user);
         for (uint8 tier = 9; tier != 0; --tier) {
             if (smallDistrictVolume >= tierDefinition(tier).requiredSmallDistrictVolume) return tier;
