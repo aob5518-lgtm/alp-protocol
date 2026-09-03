@@ -10,7 +10,8 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "contracts:test": "pnpm --dir packages/contracts test",
-    "simulate:economics": "tsx scripts/simulate/economics.ts"
+    "simulate:economics": "tsx scripts/simulate/economics.ts",
+    "reconcile": "tsx scripts/reconcile/daily.ts"
   },
   "devDependencies": {
     "solc": "0.8.30",
