@@ -17,12 +17,14 @@ contract EmissionEngine is Ownable2Step {
     error InsufficientPairReserve(uint256 reserveBefore, uint256 required);
     error EmissionNotActivated();
     error NoGlobalCompute();
+    error EmissionScheduleNotApproved();
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant INITIAL_OUTPUT_BPS = 60;
     uint256 public constant DAILY_OUTPUT_INCREMENT_BPS = 1;
     uint256 public constant MAX_OUTPUT_BPS = 120;
     uint256 public constant BURN_BPS = 120;
+    bytes32 public constant V1_SCHEDULE_HASH = keccak256("ALP_V1_EMISSION_DAY60_120_BPS");
 
     ALPToken public immutable alp;
     GlobalComputeEngine public immutable computeEngine;
@@ -31,6 +33,7 @@ contract EmissionEngine is Ownable2Step {
     uint64 public nextEpochTime;
     uint64 public emissionStartTime;
     bool public emissionActivated;
+    bool public emissionScheduleApproved;
     uint256 public epochId;
 
     struct Epoch {
@@ -57,6 +60,7 @@ contract EmissionEngine is Ownable2Step {
         address indexed caller
     );
     event EmissionActivated(uint64 indexed emissionStartTime, uint64 firstEpochTime, address indexed caller);
+    event EmissionScheduleApproved(bytes32 indexed scheduleHash, address indexed governance);
 
     constructor(ALPToken alp_, GlobalComputeEngine computeEngine_, address mainPair_, uint64 firstEpochTime_, address initialOwner)
         Ownable(initialOwner)
@@ -73,8 +77,17 @@ contract EmissionEngine is Ownable2Step {
     }
 
     /// @notice The first epoch cannot start until actual user compute exists.
+    function approveV1EmissionSchedule() external onlyOwner {
+        if (!emissionScheduleApproved) {
+            emissionScheduleApproved = true;
+            emit EmissionScheduleApproved(V1_SCHEDULE_HASH, msg.sender);
+        }
+    }
+
+    /// @notice The first epoch cannot start until actual user compute and governance schedule approval exist.
     function activateEmission() external onlyOwner {
         if (emissionActivated) revert EmissionNotActivated();
+        if (!emissionScheduleApproved) revert EmissionScheduleNotApproved();
         if (computeEngine.globalEffectiveCompute() == 0) revert NoGlobalCompute();
         emissionActivated = true;
         emissionStartTime = uint64(block.timestamp);

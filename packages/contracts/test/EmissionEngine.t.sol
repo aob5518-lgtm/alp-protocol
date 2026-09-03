@@ -45,6 +45,7 @@ contract EmissionEngineTest is Test {
 
     function testPermissionlessEpochBurnsAndEmitsFromStartReserve() public {
         vm.warp(1 days);
+        engine.approveV1EmissionSchedule();
         engine.activateEmission();
         engine.settleEpoch();
 
@@ -69,9 +70,18 @@ contract EmissionEngineTest is Test {
     function testCannotActivateBeforeAnyUserComputeExists() public {
         GlobalComputeEngine emptyCompute = new GlobalComputeEngine(alp, address(this));
         EmissionEngine emptyEngine = new EmissionEngine(alp, emptyCompute, address(pair), 1 days, address(this));
+        emptyEngine.approveV1EmissionSchedule();
 
         vm.expectRevert(EmissionEngine.NoGlobalCompute.selector);
         emptyEngine.activateEmission();
+    }
+
+    function testEmissionScheduleRequiresGovernanceApprovalBeforeActivation() public {
+        vm.expectRevert(EmissionEngine.EmissionScheduleNotApproved.selector);
+        engine.activateEmission();
+        engine.approveV1EmissionSchedule();
+        assertTrue(engine.emissionScheduleApproved());
+        assertEq(engine.V1_SCHEDULE_HASH(), keccak256("ALP_V1_EMISSION_DAY60_120_BPS"));
     }
 
     function testZeroComputeEmissionIsDeferredThenAllocatedToTheFirstActiveCompute() public {

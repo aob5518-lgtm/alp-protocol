@@ -16,7 +16,7 @@ This checklist tracks the second-round acceptance remediation. Contract arithmet
 - [x] Main-pair bootstrap enforces the 0.0001 USDT ALP target price and one-time configuration.
 - [x] Token privileged operations are narrowed to configured emission and cycle-manager entry points.
 - [x] Emission activation requires compute; deferred emission is accounted for rather than stranded.
-- [ ] Explicit Day-60 emission schedule and governance approval gate are documented and enforced for production.
+- [x] Explicit Day-60 emission schedule and governance approval gate are documented and enforced for production.
 - [x] Buyback supports timelocked, whitelisted multi-hop execution with independent oracle checks.
 - [x] OracleRouter supports Chainlink and Pancake V2 TWAP assets with stale, liquidity, and deviation checks.
 - [x] Asset immutable fields seal after first active pool; mutable risk/oracle changes remain governed.
