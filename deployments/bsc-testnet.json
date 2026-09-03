@@ -17,7 +17,15 @@
     "liquidityManager": null,
     "liquidityBootstrapper": null,
     "launchPoolFactory": null,
-    "buybackExecutor": null
+    "buybackExecutor": null,
+    "launchReferencePriceOracle": null,
+    "tierSnapshotRegistry": null,
+    "tierEngine": null,
+    "differentialRewardEngine": null,
+    "emissionEngine": null,
+    "protocolExemptionRegistry": null,
+    "reliqueToken": null,
+    "reliquePool": null
   },
   "external": {
     "usdt": null,
