@@ -33,9 +33,14 @@ export default function Providers({children}: {children: ReactNode}) {
     if (!provider) { setError("No injected wallet detected. Install MetaMask, TokenPocket or OKX Wallet."); return; }
     try {
       const accounts = await provider.request({method: "eth_requestAccounts"}) as string[];
-      await provider.request({method: "wallet_switchEthereumChain", params: [{chainId: "0x61"}]});
+      try { await provider.request({method: "wallet_switchEthereumChain", params: [{chainId: "0x61"}]}); }
+      catch (switchError) {
+        const code = (switchError as {code?: number}).code;
+        if (code !== 4902) throw switchError;
+        await provider.request({method:"wallet_addEthereumChain",params:[{chainId:"0x61",chainName:"BSC Testnet",nativeCurrency:{name:"tBNB",symbol:"tBNB",decimals:18},rpcUrls:["https://data-seed-prebsc-1-s1.bnbchain.org:8545"],blockExplorerUrls:["https://testnet.bscscan.com"]}]});
+      }
       setAddress(accounts[0]); setError(undefined);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Wallet rejected the request."); }
+    } catch (cause) { const code=(cause as {code?:number}).code; setError(code===4001?"Wallet rejected the request.":cause instanceof Error?cause.message:"Wallet connection failed."); }
   };
   return <TranslationContext.Provider value={messages as Record<string, unknown>}><LocaleContext.Provider value={{locale, setLocale}}><WalletContext.Provider value={{address, connect, disconnect: () => setAddress(undefined), error}}>{children}</WalletContext.Provider></LocaleContext.Provider></TranslationContext.Provider>;
 }

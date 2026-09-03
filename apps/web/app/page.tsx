@@ -3,14 +3,15 @@
 import {useEffect, useState} from "react";
 import {ArrowUpRight, ChevronDown, CircleGauge, Globe2, LayoutDashboard, Network, Plus, ShieldCheck, Wallet} from "lucide-react";
 import {useLocale, useTranslations, useWallet} from "./providers";
+import walletStyles from "./wallet.module.css";
 
 type View = "explore" | "launch" | "portfolio" | "network" | "alp" | "admin";
 type DeploymentState = "loading" | "deployed" | "template-not-deployed" | "unavailable";
 const views: {id: View; icon: typeof LayoutDashboard}[] = [{id:"explore",icon:LayoutDashboard},{id:"launch",icon:Plus},{id:"portfolio",icon:Wallet},{id:"network",icon:Network},{id:"alp",icon:CircleGauge},{id:"admin",icon:ShieldCheck}];
 
 function WalletButton() {
-  const t = useTranslations("common"), {address, connect, disconnect} = useWallet();
-  return address ? <button className="wallet" onClick={disconnect}>{address.slice(0,6)}…{address.slice(-4)}<ChevronDown size={14}/></button> : <button className="wallet" onClick={connect}><Wallet size={15}/>{t("connect")}</button>;
+  const t = useTranslations("common"), {address, connect, disconnect, error} = useWallet();
+  return <div className={walletStyles.wrap}>{address ? <button className="wallet" onClick={disconnect}>{address.slice(0,6)}…{address.slice(-4)}<ChevronDown size={14}/></button> : <button className="wallet" onClick={connect}><Wallet size={15}/>{t("connect")}</button>}{error&&<span className={walletStyles.error} role="alert">{error}</span>}</div>;
 }
 function Metric({label,value,note}:{label:string;value:string;note:string}) { return <article className="metric"><span>{label}</span><strong>{value}</strong><small>{note}</small></article>; }
 function Line({label,value,note}:{label:string;value:string;note?:string}) { return <div className="line"><span>{label}</span><b>{value}</b>{note&&<i>{note}</i>}</div>; }
