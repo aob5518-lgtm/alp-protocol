@@ -7,6 +7,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ILiquidityALPSource} from "./interfaces/ILiquidityALPSource.sol";
 import {IPancakeV2Router} from "./interfaces/IPancakeV2Router.sol";
 import {PermanentLiquidityLocker} from "./PermanentLiquidityLocker.sol";
+import {IProtocolController} from "./interfaces/IProtocolController.sol";
 
 /// @notice Adds ALP/USDT liquidity using pre-existing ALP and permanently locks LP.
 /// @dev It contains no minting, no LP withdrawal, and no arbitrary treasury withdrawal.
@@ -26,6 +27,7 @@ contract LiquidityManager is AccessControl {
     ILiquidityALPSource public immutable liquidityALPSource;
     IPancakeV2Router public router;
     PermanentLiquidityLocker public immutable locker;
+    IProtocolController public immutable protocolController;
     address public mainPair;
 
     mapping(uint256 => uint256) public pendingUsdtByAsset;
@@ -47,16 +49,19 @@ contract LiquidityManager is AccessControl {
         IERC20 usdt_,
         ILiquidityALPSource liquidityALPSource_,
         PermanentLiquidityLocker locker_,
+        IProtocolController protocolController_,
         address admin
     ) {
         if (
             address(alp_) == address(0) || address(usdt_) == address(0) || address(liquidityALPSource_) == address(0)
                 || address(locker_) == address(0) || admin == address(0)
+                || address(protocolController_) == address(0)
         ) revert ZeroAddress();
         alp = alp_;
         usdt = usdt_;
         liquidityALPSource = liquidityALPSource_;
         locker = locker_;
+        protocolController = protocolController_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
@@ -92,6 +97,7 @@ contract LiquidityManager is AccessControl {
         uint256 minUsdtAmount,
         uint256 deadline
     ) external onlyRole(LIQUIDITY_OPERATOR_ROLE) returns (uint256 usedAlp, uint256 usedUsdt, uint256 lpAmount) {
+        protocolController.requireOperational();
         if (address(router) == address(0)) revert RouterNotConfigured();
         if (mainPair == address(0)) revert PairNotConfigured();
         if (alpAmount == 0 || usdtAmount == 0 || usdtAmount > pendingUsdtByAsset[assetId]) revert InvalidAmount();
