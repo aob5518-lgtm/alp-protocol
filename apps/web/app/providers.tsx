@@ -26,11 +26,17 @@ function ProviderState({children}: {children: ReactNode}) {
   const messages = locale === "zh-CN" ? zh : en;
   useEffect(() => {
     const stored = window.localStorage.getItem("alp.locale");
-    if (stored === "en-US" || stored === "zh-CN") setLocale(stored);
+    const cookie = document.cookie
+      .split("; ")
+      .find((entry) => entry.startsWith("alp.locale="))
+      ?.split("=")[1];
+    const persisted = stored ?? cookie;
+    if (persisted === "en-US" || persisted === "zh-CN") setLocale(persisted);
   }, []);
   useEffect(() => {
     document.documentElement.lang = locale;
     window.localStorage.setItem("alp.locale", locale);
+    document.cookie = `alp.locale=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
   }, [locale]);
   const connect = async () => {
     try {
