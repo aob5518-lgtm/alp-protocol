@@ -104,6 +104,7 @@ contract LaunchPoolFactory is Ownable2Step {
         differentialRewardEngine.registerPool(address(pool));
         _poolsForAsset[assetId].push(address(pool));
         isPool[address(pool)] = true;
+        registry.sealAsset(assetId, address(pool));
         emit LaunchPoolCreated(assetId, address(pool), config.poolOwner, address(config.compensationStrategy), config.computeWeightE18);
     }
 

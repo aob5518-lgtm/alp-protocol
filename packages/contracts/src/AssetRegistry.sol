@@ -10,6 +10,9 @@ contract AssetRegistry is Ownable2Step {
     error ZeroAddress();
     error AssetNotFound(uint256 assetId);
     error InvalidLaunchTime(uint64 launchTime);
+    error PoolFactoryAlreadyConfigured();
+    error OnlyPoolFactory(address caller);
+    error ImmutableAssetFieldsSealed(uint256 assetId);
 
     enum RiskStatus { REVIEW, NORMAL, WARNING, BLOCKED }
     enum LaunchStatus { DRAFT, REVIEW, ACTIVE, PAUSED, DELISTED }
@@ -27,9 +30,13 @@ contract AssetRegistry is Ownable2Step {
 
     uint256 public nextAssetId = 1;
     mapping(uint256 => AssetConfig) private _assets;
+    mapping(uint256 => bool) public assetSealed;
+    address public poolFactory;
 
     event AssetRegistered(uint256 indexed assetId, address indexed token, string symbol, string name);
     event AssetUpdated(uint256 indexed assetId, LaunchStatus launchStatus, RiskStatus riskStatus);
+    event PoolFactoryConfigured(address indexed poolFactory);
+    event AssetSealed(uint256 indexed assetId, address indexed pool);
 
     constructor(address initialOwner) Ownable(initialOwner) {
         if (initialOwner == address(0)) revert ZeroAddress();
@@ -43,10 +50,34 @@ contract AssetRegistry is Ownable2Step {
     }
 
     function updateAsset(uint256 assetId, AssetConfig calldata config) external onlyOwner {
-        if (_assets[assetId].token == address(0)) revert AssetNotFound(assetId);
+        AssetConfig storage previous = _assets[assetId];
+        if (previous.token == address(0)) revert AssetNotFound(assetId);
         _validate(config);
+        if (assetSealed[assetId] && (
+            previous.token != config.token || previous.vault != config.vault || previous.launchTime != config.launchTime
+                || keccak256(bytes(previous.symbol)) != keccak256(bytes(config.symbol))
+                || keccak256(bytes(previous.name)) != keccak256(bytes(config.name))
+        )) revert ImmutableAssetFieldsSealed(assetId);
         _assets[assetId] = config;
         emit AssetUpdated(assetId, config.launchStatus, config.riskStatus);
+    }
+
+    /// @notice Binds the trusted factory once; only it can seal an asset after its first pool exists.
+    function configurePoolFactory(address poolFactory_) external onlyOwner {
+        if (poolFactory_ == address(0)) revert ZeroAddress();
+        if (poolFactory != address(0)) revert PoolFactoryAlreadyConfigured();
+        poolFactory = poolFactory_;
+        emit PoolFactoryConfigured(poolFactory_);
+    }
+
+    function sealAsset(uint256 assetId, address pool) external {
+        if (msg.sender != poolFactory) revert OnlyPoolFactory(msg.sender);
+        if (_assets[assetId].token == address(0)) revert AssetNotFound(assetId);
+        if (pool == address(0) || pool.code.length == 0) revert ZeroAddress();
+        if (!assetSealed[assetId]) {
+            assetSealed[assetId] = true;
+            emit AssetSealed(assetId, pool);
+        }
     }
 
     function asset(uint256 assetId) external view returns (AssetConfig memory) {

@@ -19,7 +19,7 @@ This checklist tracks the second-round acceptance remediation. Contract arithmet
 - [ ] Explicit Day-60 emission schedule and governance approval gate are documented and enforced for production.
 - [x] Buyback supports timelocked, whitelisted multi-hop execution with independent oracle checks.
 - [ ] OracleRouter supports Chainlink and Pancake V2 TWAP assets with stale, liquidity, and deviation checks.
-- [ ] Asset immutable fields seal after first active pool; mutable risk/oracle changes remain governed.
+- [x] Asset immutable fields seal after first active pool; mutable risk/oracle changes remain governed.
 - [ ] ProtocolController and ProductionConfigValidator are wired as real production and emergency-pause gates.
 - [ ] Referral, tier, solvency, Top100, node, and fee invariants are covered by tests.
 

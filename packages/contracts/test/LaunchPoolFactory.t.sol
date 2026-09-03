@@ -51,6 +51,7 @@ contract LaunchPoolFactoryTest is Test {
         differential = new DifferentialRewardEngine(usdt, treasury, sponsors, tiers, address(this));
         liquidity = new MockLiquidityManager();
         factory = new LaunchPoolFactory(address(this), registry, usdt, compute, sponsors, referral, tiers, differential);
+        registry.configurePoolFactory(address(factory));
 
         vault.grantFactory(address(factory));
         compute.grantRole(compute.POOL_FACTORY_ROLE(), address(factory));
@@ -117,5 +118,19 @@ contract LaunchPoolFactoryTest is Test {
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(LaunchPool.AssetUnavailable.selector, 1));
         pool.createPosition(100 ether, 25 ether);
+    }
+
+    function testFirstPoolSealsImmutableAssetIdentityButRetainsGovernedRiskUpdates() public {
+        assertTrue(registry.assetSealed(1));
+        AssetRegistry.AssetConfig memory mutableConfig = registry.asset(1);
+        mutableConfig.oracle = address(new MockOracleAdapter());
+        mutableConfig.riskStatus = AssetRegistry.RiskStatus.WARNING;
+        registry.updateAsset(1, mutableConfig);
+        assertEq(registry.asset(1).oracle, address(mutableConfig.oracle));
+
+        AssetRegistry.AssetConfig memory invalidConfig = registry.asset(1);
+        invalidConfig.symbol = "NEW";
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.ImmutableAssetFieldsSealed.selector, 1));
+        registry.updateAsset(1, invalidConfig);
     }
 }
