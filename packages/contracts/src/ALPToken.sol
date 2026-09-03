@@ -22,6 +22,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     error OnlyGenesisReserve(address caller);
     error LiquidityBootstrapperAlreadyConfigured();
     error OnlyLiquidityBootstrapper(address caller);
+    error SellFeeExemptionsSealed();
 
     uint256 public constant MAX_SUPPLY = 210_000_000 ether;
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -39,6 +40,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     bool public buyRestrictionEnabled = true;
     mapping(address => bool) public buyWhitelist;
     mapping(address => bool) public sellFeeExempt;
+    bool public sellFeeExemptionsSealed;
 
     address public immutable assetBuybackTreasury;
     address public immutable top100Treasury;
@@ -49,6 +51,7 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     event MainPairConfigured(address indexed pair);
     event BuyWhitelistUpdated(address indexed account, bool allowed);
     event SellFeeExemptionUpdated(address indexed account, bool exempt);
+    event SellFeeExemptionsSealActivated();
     event BuyRestrictionUpdated(bool enabled);
     event SellFeeCollected(address indexed seller, uint256 grossAmount, uint256 feeAmount);
     event ProtocolBurned(address indexed account, uint256 amount, address indexed engine);
@@ -101,10 +104,14 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     }
 
     function setSellFeeExempt(address account, bool exempt) external onlyOwner {
+        if (sellFeeExemptionsSealed) revert SellFeeExemptionsSealed();
         if (account == address(0)) revert ZeroAddress();
+        if (exempt && account.code.length == 0) revert GenesisReserveMustBeContract(account);
         sellFeeExempt[account] = exempt;
         emit SellFeeExemptionUpdated(account, exempt);
     }
+
+    function sealSellFeeExemptions() external onlyOwner { if (sellFeeExemptionsSealed) revert SellFeeExemptionsSealed(); sellFeeExemptionsSealed = true; emit SellFeeExemptionsSealActivated(); }
 
     function setBuyRestrictionEnabled(bool enabled) external onlyOwner {
         buyRestrictionEnabled = enabled;
