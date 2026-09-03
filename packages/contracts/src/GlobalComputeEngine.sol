@@ -66,15 +66,17 @@ contract GlobalComputeEngine is AccessControl, ReentrancyGuard, IGlobalComputeEn
     }
 
     function notifyEmission(uint256 amount) external onlyRole(EMISSION_ROLE) {
-        totalEmitted += amount;
         uint256 totalCompute = globalEffectiveCompute;
         if (totalCompute == 0) {
             undistributedEmission += amount;
             emit EmissionDeferred(amount);
             return;
         }
-        accRewardPerCompute += amount * ACC_PRECISION / totalCompute;
-        emit EmissionNotified(amount, accRewardPerCompute, totalCompute);
+        uint256 distributable = amount + undistributedEmission;
+        undistributedEmission = 0;
+        totalEmitted += distributable;
+        accRewardPerCompute += distributable * ACC_PRECISION / totalCompute;
+        emit EmissionNotified(distributable, accRewardPerCompute, totalCompute);
     }
 
     function pending(uint256 positionId) public view returns (uint256) {

@@ -15,6 +15,8 @@ contract EmissionEngine is Ownable2Step {
     error ZeroAddress();
     error EpochNotReady(uint64 nextEpochTime, uint256 currentTime);
     error InsufficientPairReserve(uint256 reserveBefore, uint256 required);
+    error EmissionNotActivated();
+    error NoGlobalCompute();
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant INITIAL_OUTPUT_BPS = 60;
@@ -27,6 +29,8 @@ contract EmissionEngine is Ownable2Step {
     address public immutable mainPair;
     uint64 public immutable firstEpochTime;
     uint64 public nextEpochTime;
+    uint64 public emissionStartTime;
+    bool public emissionActivated;
     uint256 public epochId;
 
     struct Epoch {
@@ -52,6 +56,7 @@ contract EmissionEngine is Ownable2Step {
         uint16 burnRateBps,
         address indexed caller
     );
+    event EmissionActivated(uint64 indexed emissionStartTime, uint64 firstEpochTime, address indexed caller);
 
     constructor(ALPToken alp_, GlobalComputeEngine computeEngine_, address mainPair_, uint64 firstEpochTime_, address initialOwner)
         Ownable(initialOwner)
@@ -67,6 +72,16 @@ contract EmissionEngine is Ownable2Step {
         nextEpochTime = firstEpochTime_;
     }
 
+    /// @notice The first epoch cannot start until actual user compute exists.
+    function activateEmission() external onlyOwner {
+        if (emissionActivated) revert EmissionNotActivated();
+        if (computeEngine.globalEffectiveCompute() == 0) revert NoGlobalCompute();
+        emissionActivated = true;
+        emissionStartTime = uint64(block.timestamp);
+        nextEpochTime = uint64(block.timestamp);
+        emit EmissionActivated(emissionStartTime, nextEpochTime, msg.sender);
+    }
+
     function outputRateBps(uint256 epochId_) public pure returns (uint16) {
         // The approved schedule fixes day 60 at 120 BPS. Days 1-59 rise one BPS from 60;
         // the final transition is intentionally capped to satisfy that explicit launch parameter.
@@ -76,6 +91,7 @@ contract EmissionEngine is Ownable2Step {
     }
 
     function settleEpoch() external returns (uint256 settledEpochId) {
+        if (!emissionActivated) revert EmissionNotActivated();
         if (block.timestamp < nextEpochTime) revert EpochNotReady(nextEpochTime, block.timestamp);
         settledEpochId = ++epochId;
         uint16 rate = outputRateBps(settledEpochId);
@@ -104,7 +120,7 @@ contract EmissionEngine is Ownable2Step {
             burnRateBps: uint16(BURN_BPS)
         });
         // Preserve the established cadence even if settlement happens late; no double settlement is possible.
-        nextEpochTime = firstEpochTime + uint64(settledEpochId) * 1 days;
+        nextEpochTime = emissionStartTime + uint64(settledEpochId) * 1 days;
         emit EpochSettled(
             settledEpochId, settledAt, reserveBefore, burnAmount, emissionAmount, reserveAfter, rate, uint16(BURN_BPS), msg.sender
         );

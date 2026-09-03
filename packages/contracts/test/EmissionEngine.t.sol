@@ -10,6 +10,7 @@ import {MockPair} from "./mocks/MockPair.sol";
 
 contract EmissionEngineTest is Test {
     address internal reserve = makeAddr("reserve");
+    address internal computeUser = makeAddr("computeUser");
     ALPToken internal alp;
     GlobalComputeEngine internal compute;
     EmissionEngine internal engine;
@@ -36,19 +37,22 @@ contract EmissionEngineTest is Test {
         engine = new EmissionEngine(alp, compute, address(pair), 1 days, address(this));
         alp.configureEmissionEngine(address(engine));
         compute.grantRole(compute.EMISSION_ROLE(), address(engine));
+        compute.grantRole(compute.POOL_ROLE(), address(this));
+        compute.addPosition(1, computeUser, 1 ether);
         vm.prank(reserve);
         alp.transfer(address(pair), 10_000 ether);
     }
 
     function testPermissionlessEpochBurnsAndEmitsFromStartReserve() public {
         vm.warp(1 days);
+        engine.activateEmission();
         engine.settleEpoch();
 
         assertEq(engine.epochId(), 1);
         assertEq(alp.balanceOf(address(pair)), 9_820 ether);
         assertEq(alp.balanceOf(address(compute)), 60 ether);
         assertEq(alp.totalSupply(), 210_000_000 ether - 120 ether);
-        assertEq(compute.undistributedEmission(), 60 ether);
+        assertEq(compute.undistributedEmission(), 0);
         assertEq(pair.syncCount(), 1);
         (,, uint256 burnAmount, uint256 emissionAmount,,,) = engine.epochs(1);
         assertEq(burnAmount, 120 ether);
@@ -60,5 +64,29 @@ contract EmissionEngineTest is Test {
         assertEq(engine.outputRateBps(59), 118);
         assertEq(engine.outputRateBps(60), 120);
         assertEq(engine.outputRateBps(500), 120);
+    }
+
+    function testCannotActivateBeforeAnyUserComputeExists() public {
+        GlobalComputeEngine emptyCompute = new GlobalComputeEngine(alp, address(this));
+        EmissionEngine emptyEngine = new EmissionEngine(alp, emptyCompute, address(pair), 1 days, address(this));
+
+        vm.expectRevert(EmissionEngine.NoGlobalCompute.selector);
+        emptyEngine.activateEmission();
+    }
+
+    function testZeroComputeEmissionIsDeferredThenAllocatedToTheFirstActiveCompute() public {
+        GlobalComputeEngine deferredCompute = new GlobalComputeEngine(alp, address(this));
+        deferredCompute.grantRole(deferredCompute.EMISSION_ROLE(), address(this));
+        deferredCompute.notifyEmission(60 ether);
+        assertEq(deferredCompute.undistributedEmission(), 60 ether);
+        assertEq(deferredCompute.totalEmitted(), 0);
+
+        deferredCompute.grantRole(deferredCompute.POOL_ROLE(), address(this));
+        deferredCompute.addPosition(999, computeUser, 1 ether);
+        deferredCompute.notifyEmission(6 ether);
+
+        assertEq(deferredCompute.undistributedEmission(), 0);
+        assertEq(deferredCompute.totalEmitted(), 66 ether);
+        assertEq(deferredCompute.pending(999), 66 ether);
     }
 }

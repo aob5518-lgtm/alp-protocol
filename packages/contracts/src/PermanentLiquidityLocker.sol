@@ -7,21 +7,31 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 /// transfer, approval, rescue, or withdrawal capability.
 contract PermanentLiquidityLocker is AccessControl {
     error ZeroAddress();
-    error OnlyLiquidityManager(address caller);
+    error ExecutorMustBeContract(address executor);
 
-    address public immutable liquidityManager;
+    bytes32 public constant LIQUIDITY_EXECUTOR_ROLE = keccak256("LIQUIDITY_EXECUTOR_ROLE");
     mapping(address => uint256) public lockedLiquidity;
 
     event LiquidityPermanentlyLocked(address indexed pair, uint256 amount, bytes32 indexed operation);
+    event LiquidityExecutorSet(address indexed executor, bool allowed);
 
     constructor(address liquidityManager_, address admin) {
         if (liquidityManager_ == address(0) || admin == address(0)) revert ZeroAddress();
-        liquidityManager = liquidityManager_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(LIQUIDITY_EXECUTOR_ROLE, liquidityManager_);
     }
 
-    function recordLock(address pair, uint256 amount, bytes32 operation) external {
-        if (msg.sender != liquidityManager) revert OnlyLiquidityManager(msg.sender);
+    /// @notice Registers the manager and the one-time bootstrapper as the only components
+    /// that may attest LP tokens sent directly to this non-withdrawable locker.
+    function setLiquidityExecutor(address executor, bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (executor == address(0)) revert ZeroAddress();
+        if (allowed && executor.code.length == 0) revert ExecutorMustBeContract(executor);
+        if (allowed) _grantRole(LIQUIDITY_EXECUTOR_ROLE, executor);
+        else _revokeRole(LIQUIDITY_EXECUTOR_ROLE, executor);
+        emit LiquidityExecutorSet(executor, allowed);
+    }
+
+    function recordLock(address pair, uint256 amount, bytes32 operation) external onlyRole(LIQUIDITY_EXECUTOR_ROLE) {
         if (pair == address(0)) revert ZeroAddress();
         lockedLiquidity[pair] += amount;
         emit LiquidityPermanentlyLocked(pair, amount, operation);
