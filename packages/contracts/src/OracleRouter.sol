@@ -14,7 +14,8 @@ contract OracleRouter is AccessControl, IPriceOracleAdapter {
 
     enum SourceKind {
         CHAINLINK,
-        PANCAKE_V2_TWAP
+        PANCAKE_V2_TWAP,
+        LAUNCH_REFERENCE
     }
 
     struct SourceConfig {
@@ -25,6 +26,12 @@ contract OracleRouter is AccessControl, IPriceOracleAdapter {
     mapping(address => SourceConfig) private _sources;
 
     event SourceConfigured(address indexed token, address indexed source, SourceKind kind);
+    event OracleTransition(
+        address indexed token,
+        address indexed previousSource,
+        address indexed nextSource,
+        SourceKind nextKind
+    );
 
     constructor(address admin) {
         if (admin == address(0)) revert ZeroAddress();
@@ -37,9 +44,11 @@ contract OracleRouter is AccessControl, IPriceOracleAdapter {
     {
         if (token == address(0) || address(source) == address(0)) revert ZeroAddress();
         if (address(source).code.length == 0) revert SourceMustBeContract(address(source));
-        if (uint8(kind) > uint8(SourceKind.PANCAKE_V2_TWAP)) revert InvalidSourceKind();
+        if (uint8(kind) > uint8(SourceKind.LAUNCH_REFERENCE)) revert InvalidSourceKind();
+        address previous = address(_sources[token].source);
         _sources[token] = SourceConfig({ source: source, kind: kind });
         emit SourceConfigured(token, address(source), kind);
+        emit OracleTransition(token, previous, address(source), kind);
     }
 
     function sourceConfig(address token) external view returns (address source, SourceKind kind) {
