@@ -18,3 +18,5 @@ This repository must be independently audited before handling user funds. Produc
 6. Run Solidity tests with `pnpm contracts:test`.
 
 See `docs/ALP_IMPLEMENTATION_PLAN.md` for delivery status and `docs/DEPLOYMENT.md` before any deployment.
+
+User operation guides: `docs/user-guide.en-US.md` and `docs/user-guide.zh-CN.md`. The public deployment state is exposed locally at `/api/protocol`; an undeployed address book is intentionally returned as `template-not-deployed`.
