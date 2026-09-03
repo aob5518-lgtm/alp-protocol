@@ -9,11 +9,8 @@ contract SponsorRegistry is AccessControl {
     error SelfSponsor();
     error SponsorAlreadyBound(address user);
     error SponsorCycle(address user, address proposedSponsor);
-    error SponsorChainTooDeep();
-
     bytes32 public constant POOL_ROLE = keccak256("POOL_ROLE");
     bytes32 public constant POOL_FACTORY_ROLE = keccak256("POOL_FACTORY_ROLE");
-    uint256 public constant MAX_GRAPH_TRAVERSAL = 100;
 
     mapping(address => address) public sponsorOf;
     mapping(address => bool) public activeContributor;
@@ -65,15 +62,11 @@ contract SponsorRegistry is AccessControl {
         if (user == sponsor) revert SelfSponsor();
         if (sponsorOf[user] != address(0)) revert SponsorAlreadyBound(user);
         address cursor = sponsor;
-        for (uint256 i; i < MAX_GRAPH_TRAVERSAL; ++i) {
+        while (cursor != address(0)) {
             if (cursor == user) revert SponsorCycle(user, sponsor);
             cursor = sponsorOf[cursor];
-            if (cursor == address(0)) {
-                sponsorOf[user] = sponsor;
-                emit SponsorBound(user, sponsor);
-                return;
-            }
         }
-        revert SponsorChainTooDeep();
+        sponsorOf[user] = sponsor;
+        emit SponsorBound(user, sponsor);
     }
 }
