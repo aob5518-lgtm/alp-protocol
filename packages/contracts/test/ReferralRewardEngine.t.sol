@@ -49,4 +49,44 @@ contract ReferralRewardEngineTest is Test {
         vm.expectRevert(abi.encodeWithSelector(ReferralRewardEngine.AlreadyProcessed.selector, 222));
         referral.distribute(222, referred, 500 ether);
     }
+
+    function testPaysQualifiedTwentyLevelsButNeverTheTwentyFirst() public {
+        address[21] memory uplines;
+        for (uint256 i; i < uplines.length; ++i) {
+            uplines[i] = address(uint160(10_000 + i));
+        }
+
+        // Build a 21-level sponsor chain below the existing 100-hop graph guard.
+        for (uint256 i; i + 1 < uplines.length; ++i) {
+            vm.prank(uplines[i]);
+            sponsors.bindSponsor(uplines[i + 1]);
+        }
+
+        address leaf = address(uint160(20_000));
+        vm.prank(leaf);
+        sponsors.bindSponsor(uplines[0]);
+
+        // A level-N upline needs at least N active direct referrals. Give every
+        // upline exactly its required count, including a qualified level 21.
+        for (uint256 level = 1; level <= uplines.length; ++level) {
+            for (uint256 referralIndex; referralIndex < level; ++referralIndex) {
+                address direct = address(uint160(30_000 + level * 100 + referralIndex));
+                vm.prank(direct);
+                sponsors.bindSponsor(uplines[level - 1]);
+                sponsors.activateContributor(direct);
+            }
+        }
+
+        referral.distribute(333, leaf, 100 ether);
+
+        assertEq(usdt.balanceOf(uplines[0]), 6 ether);
+        for (uint256 i = 1; i < 10; ++i) {
+            assertEq(usdt.balanceOf(uplines[i]), 1 ether);
+        }
+        for (uint256 i = 10; i < 20; ++i) {
+            assertEq(usdt.balanceOf(uplines[i]), 0.5 ether);
+        }
+        assertEq(usdt.balanceOf(uplines[20]), 0);
+        assertEq(usdt.balanceOf(treasury), 980 ether);
+    }
 }
