@@ -6,6 +6,9 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockOracleAdapter} from "./mocks/MockOracleAdapter.sol";
 import {MockPancakeRouter} from "./mocks/MockPancakeRouter.sol";
 import {BuybackExecutor} from "../src/BuybackExecutor.sol";
+import {ProductionConfigValidator} from "../src/ProductionConfigValidator.sol";
+import {ProtocolController} from "../src/ProtocolController.sol";
+import {IProtocolController} from "../src/interfaces/IProtocolController.sol";
 
 contract BuybackExecutorTest is Test {
     address internal treasury = makeAddr("buybackTreasury");
@@ -16,6 +19,7 @@ contract BuybackExecutorTest is Test {
     MockOracleAdapter internal oracle;
     MockPancakeRouter internal router;
     BuybackExecutor internal executor;
+    ProtocolController internal controller;
 
     function setUp() public {
         alp = new MockERC20("ALP", "ALP", 18);
@@ -28,7 +32,10 @@ contract BuybackExecutorTest is Test {
         oracle.setTokenPrice(address(wbnb), 0.5 ether);
         router = new MockPancakeRouter();
         router.setRateWad(0.5 ether);
-        executor = new BuybackExecutor(alp, treasury, oracle, recipient, 1 days, 500, address(this));
+        controller = new ProtocolController(new ProductionConfigValidator(address(this)), address(this));
+        executor = new BuybackExecutor(
+            alp, treasury, oracle, recipient, 1 days, 500, IProtocolController(address(controller)), address(this)
+        );
         executor.grantRole(executor.SCHEDULER_ROLE(), address(this));
         executor.setRouterWhitelist(address(router), true);
         executor.configureToken(address(alp), true, 100 ether);
@@ -67,6 +74,18 @@ contract BuybackExecutorTest is Test {
         bytes32 tradeId = executor.queueTradePath(address(router), path, 100 ether);
         assertEq(executor.oracleMinimumOutPath(path, 100 ether), 47.5 ether);
         vm.warp(block.timestamp + 1 days);
+        executor.executeTrade(tradeId, 47.5 ether, block.timestamp + 10 minutes);
+        assertEq(card.balanceOf(recipient), 50 ether);
+    }
+
+    function testEmergencyPauseBlocksQueuedTradeExecution() public {
+        bytes32 tradeId = executor.queueTrade(address(router), address(alp), address(card), 100 ether);
+        vm.warp(block.timestamp + 1 days);
+        controller.emergencyPause();
+        vm.expectRevert(ProtocolController.ProtocolPaused.selector);
+        executor.executeTrade(tradeId, 47.5 ether, block.timestamp + 10 minutes);
+
+        controller.resume();
         executor.executeTrade(tradeId, 47.5 ether, block.timestamp + 10 minutes);
         assertEq(card.balanceOf(recipient), 50 ether);
     }

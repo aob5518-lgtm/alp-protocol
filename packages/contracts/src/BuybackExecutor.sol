@@ -8,6 +8,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IPriceOracleAdapter} from "./interfaces/IPriceOracleAdapter.sol";
 import {IPancakeV2Router} from "./interfaces/IPancakeV2Router.sol";
+import {IProtocolController} from "./interfaces/IProtocolController.sol";
 
 /// @notice Timelocked, oracle-guarded executor for the 5% asset-buyback treasury.
 contract BuybackExecutor is AccessControl, ReentrancyGuard {
@@ -43,6 +44,7 @@ contract BuybackExecutor is AccessControl, ReentrancyGuard {
     IERC20 public immutable paymentToken;
     address public immutable buybackTreasury;
     IPriceOracleAdapter public immutable oracle;
+    IProtocolController public immutable protocolController;
     address public buybackRecipient;
     uint64 public immutable executionDelay;
     uint16 public maxSlippageBps;
@@ -80,16 +82,19 @@ contract BuybackExecutor is AccessControl, ReentrancyGuard {
         address buybackRecipient_,
         uint64 executionDelay_,
         uint16 maxSlippageBps_,
+        IProtocolController protocolController_,
         address admin
     ) {
         if (
             address(paymentToken_) == address(0) || buybackTreasury_ == address(0) || address(oracle_) == address(0)
                 || buybackRecipient_ == address(0) || admin == address(0)
+                || address(protocolController_) == address(0)
         ) revert ZeroAddress();
         if (maxSlippageBps_ >= BPS_DENOMINATOR) revert InvalidSlippage(maxSlippageBps_);
         paymentToken = paymentToken_;
         buybackTreasury = buybackTreasury_;
         oracle = oracle_;
+        protocolController = protocolController_;
         buybackRecipient = buybackRecipient_;
         executionDelay = executionDelay_;
         maxSlippageBps = maxSlippageBps_;
@@ -169,6 +174,7 @@ contract BuybackExecutor is AccessControl, ReentrancyGuard {
 
     /// @param minimumOut User/keeper supplied bound; it must be no worse than the live oracle bound.
     function executeTrade(bytes32 tradeId, uint256 minimumOut, uint256 deadline) external nonReentrant returns (uint256 amountOut) {
+        protocolController.requireOperational();
         QueuedTrade storage trade = queuedTrade[tradeId];
         if (trade.executableAt == 0) revert TradeNotQueued(tradeId);
         if (trade.executed) revert TradeAlreadyExecuted(tradeId);
