@@ -1,0 +1,29 @@
+{
+  "network": "bsc-testnet",
+  "chainId": 97,
+  "status": "template-not-deployed",
+  "generatedAt": null,
+  "commit": null,
+  "contracts": {
+    "alp": null,
+    "genesisReserve": null,
+    "genesisReserveLiquiditySource": null,
+    "permanentLiquidityLocker": null,
+    "protocolController": null,
+    "productionConfigValidator": null,
+    "assetRegistry": null,
+    "oracleRouter": null,
+    "globalComputeEngine": null,
+    "liquidityManager": null,
+    "liquidityBootstrapper": null,
+    "launchPoolFactory": null,
+    "buybackExecutor": null
+  },
+  "external": {
+    "usdt": null,
+    "pancakeV2Router": null,
+    "pancakeV2Factory": null,
+    "safe": null,
+    "timelock": null
+  }
+}
