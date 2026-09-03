@@ -14,10 +14,12 @@ import {LaunchPool} from "../src/LaunchPool.sol";
 import {LinearDailyCompensationStrategy} from "../src/strategies/LinearDailyCompensationStrategy.sol";
 import {TierEngine} from "../src/TierEngine.sol";
 import {DifferentialRewardEngine} from "../src/DifferentialRewardEngine.sol";
+import {ILiquidityManager} from "../src/interfaces/ILiquidityManager.sol";
+import {MockLiquidityManager} from "./mocks/MockLiquidityManager.sol";
 
 contract LaunchPoolFactoryTest is Test {
     address internal treasury = makeAddr("rewardTreasury");
-    address internal liquidity = makeAddr("liquidity");
+    MockLiquidityManager internal liquidity;
     address internal sponsor = makeAddr("sponsor");
     address internal user = makeAddr("user");
     MockERC20 internal card;
@@ -47,6 +49,7 @@ contract LaunchPoolFactoryTest is Test {
         referral = new ReferralRewardEngine(usdt, treasury, sponsors, compute, address(this), true);
         tiers = new TierEngine(sponsors, TierEngine.VolumeBase.USDT_CONTRIBUTION, address(this));
         differential = new DifferentialRewardEngine(usdt, treasury, sponsors, tiers, address(this));
+        liquidity = new MockLiquidityManager();
         factory = new LaunchPoolFactory(address(this), registry, usdt, compute, sponsors, referral, tiers, differential);
 
         vault.grantFactory(address(factory));
@@ -73,7 +76,7 @@ contract LaunchPoolFactoryTest is Test {
                 poolOwner: address(this),
                 compensationStrategy: new LinearDailyCompensationStrategy(),
                 rewardTreasury: treasury,
-                liquidityTreasury: liquidity,
+                liquidityManager: ILiquidityManager(address(liquidity)),
                 computeWeightE18: 1e18
             })
         );
@@ -98,7 +101,8 @@ contract LaunchPoolFactoryTest is Test {
         assertTrue(vault.authorizedPool(address(pool)));
         assertEq(card.balanceOf(address(vault)), 25 ether);
         assertEq(usdt.balanceOf(treasury), 22 ether);
-        assertEq(usdt.balanceOf(liquidity), 25 ether);
+        assertEq(usdt.balanceOf(address(liquidity)), 25 ether);
+        assertEq(liquidity.pending(1), 25 ether);
         assertEq(usdt.balanceOf(sponsor), 3 ether);
         assertEq(compute.globalEffectiveCompute(), 100 ether);
         assertEq(sponsors.activeDirectReferralCount(sponsor), 1);

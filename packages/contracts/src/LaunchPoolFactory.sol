@@ -13,6 +13,7 @@ import {ICompensationStrategy} from "./interfaces/ICompensationStrategy.sol";
 import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
 import {TierEngine} from "./TierEngine.sol";
 import {DifferentialRewardEngine} from "./DifferentialRewardEngine.sol";
+import {ILiquidityManager} from "./interfaces/ILiquidityManager.sol";
 
 /// @notice Creates per-asset pools and grants them only the narrow roles required for position accounting.
 contract LaunchPoolFactory is Ownable2Step {
@@ -24,7 +25,7 @@ contract LaunchPoolFactory is Ownable2Step {
         address poolOwner;
         ICompensationStrategy compensationStrategy;
         address rewardTreasury;
-        address liquidityTreasury;
+        ILiquidityManager liquidityManager;
         uint256 computeWeightE18;
     }
 
@@ -75,7 +76,8 @@ contract LaunchPoolFactory is Ownable2Step {
     function createPool(uint256 assetId, PoolConfig calldata config) external onlyOwner returns (LaunchPool pool) {
         if (
             config.poolOwner == address(0) || address(config.compensationStrategy) == address(0)
-                || config.rewardTreasury == address(0) || config.liquidityTreasury == address(0) || config.computeWeightE18 == 0
+                || config.rewardTreasury == address(0) || address(config.liquidityManager) == address(0)
+                || config.computeWeightE18 == 0
         ) revert InvalidPoolConfiguration();
         AssetRegistry.AssetConfig memory assetConfig = registry.asset(assetId);
         if (assetConfig.launchStatus != AssetRegistry.LaunchStatus.ACTIVE) revert AssetNotActive(assetId);
@@ -91,7 +93,7 @@ contract LaunchPoolFactory is Ownable2Step {
             tierEngine,
             differentialRewardEngine,
             config.rewardTreasury,
-            config.liquidityTreasury,
+            config.liquidityManager,
             config.computeWeightE18
         );
         IPartnerAssetVault(assetConfig.vault).registerPool(address(pool));

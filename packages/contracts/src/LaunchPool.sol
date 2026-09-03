@@ -15,6 +15,7 @@ import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
 import {IGlobalComputeEngine} from "./interfaces/IGlobalComputeEngine.sol";
 import {ITierEngine} from "./interfaces/ITierEngine.sol";
 import {IDifferentialRewardEngine} from "./interfaces/IDifferentialRewardEngine.sol";
+import {ILiquidityManager} from "./interfaces/ILiquidityManager.sol";
 import {SponsorRegistry} from "./SponsorRegistry.sol";
 import {ReferralRewardEngine} from "./ReferralRewardEngine.sol";
 
@@ -63,7 +64,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
     ITierEngine public immutable tierEngine;
     IDifferentialRewardEngine public immutable differentialRewardEngine;
     address public immutable rewardTreasury;
-    address public immutable liquidityTreasury;
+    ILiquidityManager public immutable liquidityManager;
     uint64 public immutable launchTime;
     uint64 public immutable launchEpoch;
     uint256 public immutable computeWeightE18;
@@ -99,7 +100,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         ITierEngine tierEngine_,
         IDifferentialRewardEngine differentialRewardEngine_,
         address rewardTreasury_,
-        address liquidityTreasury_,
+        ILiquidityManager liquidityManager_,
         uint256 computeWeightE18_
     ) Ownable(initialOwner) {
         if (
@@ -108,7 +109,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
                 || address(sponsorRegistry_) == address(0) || address(referralRewardEngine_) == address(0)
                 || address(tierEngine_) == address(0)
                 || address(differentialRewardEngine_) == address(0)
-                || rewardTreasury_ == address(0) || liquidityTreasury_ == address(0)
+                || rewardTreasury_ == address(0) || address(liquidityManager_) == address(0)
         ) revert InvalidAddress();
         if (computeWeightE18_ == 0 || computeWeightE18_ > 10 * WAD) revert InvalidWeight();
         AssetRegistry.AssetConfig memory assetConfig = registry_.asset(assetId_);
@@ -126,7 +127,7 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         tierEngine = tierEngine_;
         differentialRewardEngine = differentialRewardEngine_;
         rewardTreasury = rewardTreasury_;
-        liquidityTreasury = liquidityTreasury_;
+        liquidityManager = liquidityManager_;
         launchTime = assetConfig.launchTime;
         launchEpoch = uint64(block.timestamp / 1 days);
         computeWeightE18 = computeWeightE18_;
@@ -166,7 +167,8 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 globalPositionId = globalPositionKey(positionId);
         vault.deposit(msg.sender, partnerAmount, assetId, globalPositionId);
         IERC20(address(usdt)).safeTransferFrom(msg.sender, rewardTreasury, rewardTreasuryAmount);
-        IERC20(address(usdt)).safeTransferFrom(msg.sender, liquidityTreasury, liquidityAmount);
+        IERC20(address(usdt)).safeTransferFrom(msg.sender, address(liquidityManager), liquidityAmount);
+        liquidityManager.receiveLiquidityAllocation(assetId, liquidityAmount);
         positions[positionId] = Position({
             user: msg.sender,
             partnerTokenAmount: partnerAmount,
