@@ -18,6 +18,7 @@ contract NodeDividendDistributor is AccessControl, ReentrancyGuard {
     error AlreadyClaimed(uint256 epochId, uint256 nodeId);
     error NotNodeOwner(address caller, uint256 nodeId);
     error InvalidProof();
+    error EpochAllocationExceeded(uint256 epochId, uint256 requested, uint256 remaining);
 
     bytes32 public constant ROOT_MANAGER_ROLE = keccak256("ROOT_MANAGER_ROLE");
 
@@ -32,6 +33,7 @@ contract NodeDividendDistributor is AccessControl, ReentrancyGuard {
     NodeRegistry public immutable nodeRegistry;
     mapping(uint256 => RootSnapshot) public rootForEpoch;
     mapping(uint256 => mapping(uint256 => bool)) public claimed;
+    mapping(uint256 => uint256) public totalClaimedForEpoch;
 
     event RootSubmitted(uint256 indexed epochId, bytes32 indexed root, uint64 snapshotBlock, uint256 totalAmount);
     event NodeDividendClaimed(uint256 indexed epochId, uint256 indexed nodeId, address indexed owner, uint256 amount);
@@ -64,7 +66,12 @@ contract NodeDividendDistributor is AccessControl, ReentrancyGuard {
         if (item.owner != msg.sender) revert NotNodeOwner(msg.sender, nodeId);
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, nodeId, msg.sender, amount))));
         if (!MerkleProof.verifyCalldata(proof, snapshot.merkleRoot, leaf)) revert InvalidProof();
+        uint256 claimedAfter = totalClaimedForEpoch[epochId] + amount;
+        if (claimedAfter > snapshot.totalAmount) {
+            revert EpochAllocationExceeded(epochId, amount, snapshot.totalAmount - totalClaimedForEpoch[epochId]);
+        }
         claimed[epochId][nodeId] = true;
+        totalClaimedForEpoch[epochId] = claimedAfter;
         rewardToken.safeTransferFrom(nodeDividendTreasury, msg.sender, amount);
         emit NodeDividendClaimed(epochId, nodeId, msg.sender, amount);
     }

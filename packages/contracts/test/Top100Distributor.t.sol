@@ -49,4 +49,16 @@ contract Top100DistributorTest is Test {
         distributor.claim(epochId, 100, 1 ether, 1 ether, emptyProof);
         vm.stopPrank();
     }
+
+    function testEpochClaimsCannotExceedCommittedSnapshotTotal() public {
+        uint256 epochId = 14;
+        uint256 amount = 25 ether;
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, 1, winner, 1 ether, amount))));
+        distributor.submitRoot(epochId, leaf, uint64(block.number), uint128(20 ether));
+        vm.prank(winner);
+        vm.expectRevert(
+            abi.encodeWithSelector(Top100Distributor.EpochAllocationExceeded.selector, epochId, amount, 20 ether)
+        );
+        distributor.claim(epochId, 1, 1 ether, amount, new bytes32[](0));
+    }
 }

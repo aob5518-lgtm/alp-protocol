@@ -52,4 +52,16 @@ contract NodeDividendDistributorTest is Test {
         vm.expectRevert(abi.encodeWithSelector(NodeDividendDistributor.NotNodeOwner.selector, stranger, nodeId));
         distributor.claim(epochId, nodeId, amount, emptyProof);
     }
+
+    function testEpochClaimsCannotExceedCommittedSnapshotTotal() public {
+        uint256 epochId = 9;
+        uint256 amount = 25 ether;
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, nodeId, owner, amount))));
+        distributor.submitRoot(epochId, leaf, uint64(block.number), uint128(20 ether));
+        vm.prank(owner);
+        vm.expectRevert(
+            abi.encodeWithSelector(NodeDividendDistributor.EpochAllocationExceeded.selector, epochId, amount, 20 ether)
+        );
+        distributor.claim(epochId, nodeId, amount, new bytes32[](0));
+    }
 }

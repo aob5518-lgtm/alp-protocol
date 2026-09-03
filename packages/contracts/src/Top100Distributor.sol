@@ -18,6 +18,7 @@ contract Top100Distributor is AccessControl, ReentrancyGuard {
     error AlreadyClaimed(uint256 epochId, address account);
     error InvalidProof();
     error InvalidRank(uint8 rank);
+    error EpochAllocationExceeded(uint256 epochId, uint256 requested, uint256 remaining);
 
     bytes32 public constant ROOT_MANAGER_ROLE = keccak256("ROOT_MANAGER_ROLE");
     uint8 public constant MAX_RANK = 100;
@@ -32,6 +33,7 @@ contract Top100Distributor is AccessControl, ReentrancyGuard {
     address public immutable top100Treasury;
     mapping(uint256 => RootSnapshot) public rootForEpoch;
     mapping(uint256 => mapping(address => bool)) public claimed;
+    mapping(uint256 => uint256) public totalClaimedForEpoch;
 
     event RootSubmitted(uint256 indexed epochId, bytes32 indexed root, uint64 snapshotBlock, uint256 totalAmount);
     event Top100RewardClaimed(
@@ -66,7 +68,12 @@ contract Top100Distributor is AccessControl, ReentrancyGuard {
         if (claimed[epochId][msg.sender]) revert AlreadyClaimed(epochId, msg.sender);
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, rank, msg.sender, effectiveCompute, amount))));
         if (!MerkleProof.verifyCalldata(proof, snapshot.merkleRoot, leaf)) revert InvalidProof();
+        uint256 claimedAfter = totalClaimedForEpoch[epochId] + amount;
+        if (claimedAfter > snapshot.totalAmount) {
+            revert EpochAllocationExceeded(epochId, amount, snapshot.totalAmount - totalClaimedForEpoch[epochId]);
+        }
         claimed[epochId][msg.sender] = true;
+        totalClaimedForEpoch[epochId] = claimedAfter;
         rewardToken.safeTransferFrom(top100Treasury, msg.sender, amount);
         emit Top100RewardClaimed(epochId, msg.sender, rank, effectiveCompute, amount);
     }

@@ -21,7 +21,7 @@ This checklist tracks the second-round acceptance remediation. Contract arithmet
 - [x] OracleRouter supports Chainlink and Pancake V2 TWAP assets with stale, liquidity, and deviation checks.
 - [x] Asset immutable fields seal after first active pool; mutable risk/oracle changes remain governed.
 - [x] ProtocolController and ProductionConfigValidator are wired as real production and emergency-pause gates.
-- [ ] Referral, tier, solvency, Top100, node, and fee invariants are covered by tests.
+- [x] Referral, tier, solvency, Top100, node, and fee invariants are covered by tests.
 
 ### P1 — Operable BSC testnet protocol
 
