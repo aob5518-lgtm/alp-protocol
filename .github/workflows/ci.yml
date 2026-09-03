@@ -1,5 +1,5 @@
 name: ALP CI
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -12,6 +12,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm --filter @alp/web build
+      - run: pnpm --filter @alp/indexer test:tiers
       - uses: foundry-rs/foundry-toolchain@v1
       - run: forge fmt --check
         working-directory: packages/contracts
