@@ -18,6 +18,7 @@ contract GenesisReserve is AccessControl {
     error TokenAlreadyConfigured();
     error OnlyProtocolModule(address caller);
     error ModuleMustBeContract(address module);
+    error RecipientNotProtocolModule(address recipient);
 
     bytes32 public constant PROTOCOL_MODULE_ROLE = keccak256("PROTOCOL_MODULE_ROLE");
 
@@ -36,6 +37,7 @@ contract GenesisReserve is AccessControl {
 
     function configureToken(address token_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (token_ == address(0)) revert ZeroAddress();
+        if (token_.code.length == 0) revert ModuleMustBeContract(token_);
         if (address(token) != address(0)) revert TokenAlreadyConfigured();
         token = IGenesisReserveToken(token_);
         emit GenesisTokenConfigured(token_);
@@ -54,7 +56,7 @@ contract GenesisReserve is AccessControl {
         external
         onlyRole(PROTOCOL_MODULE_ROLE)
     {
-        if (recipient == address(0) || recipient.code.length == 0) revert ModuleMustBeContract(recipient);
+        if (!hasRole(PROTOCOL_MODULE_ROLE, recipient)) revert RecipientNotProtocolModule(recipient);
         IERC20(address(token)).safeTransfer(recipient, amount);
         emit GenesisReserveMovement(msg.sender, recipient, amount, operation);
     }
