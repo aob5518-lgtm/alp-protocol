@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: alp
+      POSTGRES_USER: alp
+      POSTGRES_PASSWORD: alp
+    ports: ["5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data", "../packages/database/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alp -d alp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: redis-server --appendonly yes
+    volumes: ["redis-data:/data"]
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    command: anvil --host 0.0.0.0 --chain-id 31337
+    ports: ["8545:8545"]
+volumes:
+  postgres-data:
+  redis-data:

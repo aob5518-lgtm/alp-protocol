@@ -10,13 +10,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.102.8",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "lucide-react": "^0.475.0",
     "next": "^15.0.0",
+    "next-intl": "^4.14.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "viem": "^2.56.3",
+    "wagmi": "^3.7.7"
   }
 }

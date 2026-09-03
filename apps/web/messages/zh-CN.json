@@ -1,0 +1,11 @@
+{
+  "nav": {"explore":"探索","launch":"发起","portfolio":"资产","network":"网络","alp":"协议","admin":"管理"},
+  "common": {"connect":"连接钱包","disconnect":"断开连接","testnet":"BSC 测试网","notReady":"尚未达到生产就绪","loading":"正在加载链上数据…","view":"查看详情","learn":"了解更多","all":"全部","live":"已上线","upcoming":"即将推出"},
+  "home": {"eyebrow":"全球资产启动协议","title":"面向全球资产发行的链上基础设施。","subtitle":"连接资产，激活流动性，构建全球化市场。","explore":"探索资产","launch":"发起资产","assets":"已接入资产总数","liquidity":"协议流动性","burned":"已销毁 ALP","compute":"全球算力","participants":"活跃参与者","directory":"资产发行目录"},
+  "launch": {"eyebrow":"创建仓位","title":"加入 CARD 发行池","description":"每个仓位都通过经过审计的 50 / 50 合作资产与 USDT 合约结算。","value":"仓位总价值","partner":"合作资产金库","usdt":"USDT 注入","allocation":"协议分配","reward":"USDT 奖励金库","liquidity":"流动性","base":"预计基础算力","time":"时间补偿","effective":"预计有效算力","notice":"不承诺收益。奖励取决于周期发行与全球有效算力。","approveAsset":"授权 CARD","approveUsdt":"授权 USDT","submit":"发起仓位","oracle":"确认前将再次验证预言机价格。"},
+  "portfolio": {"eyebrow":"我的资产","title":"每一笔仓位，完整记账。","balance":"ALP 余额","positions":"活跃仓位","claimable":"可领取 ALP","empty":"连接钱包后可加载仓位、奖励与流动性周期进度。","cycle":"流动性周期","claim":"领取"},
+  "network": {"eyebrow":"ALP 网络","title":"全球协作，而不只是团队页面。","direct":"直接连接","depth":"网络深度","active":"活跃贡献者","volume":"网络体量","district":"小区","largest":"最大分支","tier":"当前等级","next":"下一等级","graph":"网络关系图","tierTitle":"网络等级"},
+  "protocol": {"eyebrow":"协议透明度","title":"为可审计而生。","supply":"ALP 总供应量","circulating":"流通供应量","burned":"已销毁","pair":"交易对储备","liquidity":"USDT 流动性","compute":"全球算力","positions":"活跃仓位","epoch":"当前周期","output":"当前输出率","burn":"当前销毁率","flow":"代币流向","contracts":"合约地址"},
+  "admin": {"eyebrow":"管理控制台","title":"受治理的运营，不可篡改的审计轨迹。","restricted":"需要钱包角色。管理操作仅生成 Safe / 时间锁提案，本界面不会直接执行。","assets":"资产","pools":"发行池","risk":"风险","treasuries":"金库","audit":"审计日志"},
+  "errors": {"walletRejected":"钱包拒绝了请求。","insufficientAsset":"合作资产余额不足。","insufficientUsdt":"USDT 余额不足。","oracle":"预言机不可用或价格已变化。","slippage":"超过滑点限制。","paused":"发行池或协议已暂停。","cycle":"流动性周期要求已逾期。"}
+}
