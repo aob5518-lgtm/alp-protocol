@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ILiquidityCycleManager} from "./interfaces/ILiquidityCycleManager.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ILiquidityCycleManager } from "./interfaces/ILiquidityCycleManager.sol";
 
 /// @notice Fixed-supply ALP with a MainPair buy block and an immutable 17% sell fee schedule.
 /// @dev Ownership is expected to be a timelock-controlled Safe before production activation.
@@ -55,7 +55,9 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
     event BuyRestrictionUpdated(bool enabled);
     event SellFeeCollected(address indexed seller, uint256 grossAmount, uint256 feeAmount);
     event ProtocolBurned(address indexed account, uint256 amount, address indexed engine);
-    event ProtocolTransferred(address indexed from, address indexed to, uint256 amount, address engine);
+    event ProtocolTransferred(
+        address indexed from, address indexed to, uint256 amount, address engine
+    );
     event LiquidityCycleManagerConfigured(address indexed manager);
     event EmissionEngineConfigured(address indexed engine);
     event LiquidityBootstrapperConfigured(address indexed bootstrapper);
@@ -70,12 +72,16 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         address developmentTreasury_
     ) ERC20("Asset Launch Protocol Token", "ALP") Ownable(initialOwner) {
         if (
-            initialReserve == address(0) || initialOwner == address(0) || assetBuybackTreasury_ == address(0)
-                || top100Treasury_ == address(0) || nodeAirdropTreasury_ == address(0)
-                || communityTreasury_ == address(0) || developmentTreasury_ == address(0)
+            initialReserve == address(0) || initialOwner == address(0)
+                || assetBuybackTreasury_ == address(0) || top100Treasury_ == address(0)
+                || nodeAirdropTreasury_ == address(0) || communityTreasury_ == address(0)
+                || developmentTreasury_ == address(0)
         ) revert ZeroAddress();
         if (initialReserve.code.length == 0) revert GenesisReserveMustBeContract(initialReserve);
-        if (BUYBACK_BPS + TOP100_BPS + NODE_AIRDROP_BPS + COMMUNITY_BPS + DEVELOPMENT_BPS != SELL_FEE_BPS) {
+        if (
+            BUYBACK_BPS + TOP100_BPS + NODE_AIRDROP_BPS + COMMUNITY_BPS + DEVELOPMENT_BPS
+                != SELL_FEE_BPS
+        ) {
             revert InvalidFeeConfiguration();
         }
         assetBuybackTreasury = assetBuybackTreasury_;
@@ -111,7 +117,11 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         emit SellFeeExemptionUpdated(account, exempt);
     }
 
-    function sealSellFeeExemptions() external onlyOwner { if (sellFeeExemptionsSealed) revert SellFeeExemptionsSealed(); sellFeeExemptionsSealed = true; emit SellFeeExemptionsSealActivated(); }
+    function sealSellFeeExemptions() external onlyOwner {
+        if (sellFeeExemptionsSealed) revert SellFeeExemptionsSealed();
+        sellFeeExemptionsSealed = true;
+        emit SellFeeExemptionsSealActivated();
+    }
 
     function setBuyRestrictionEnabled(bool enabled) external onlyOwner {
         buyRestrictionEnabled = enabled;
@@ -176,7 +186,10 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
 
     function _update(address from, address to, uint256 value) internal override {
         address pair = mainPair;
-        if (pair != address(0) && buyRestrictionEnabled && from == pair && to != address(0) && !buyWhitelist[to]) {
+        if (
+            pair != address(0) && buyRestrictionEnabled && from == pair && to != address(0)
+                && !buyWhitelist[to]
+        ) {
             revert ALPBuyRestricted(to);
         }
         if (pair != address(0) && to == pair && from != address(0) && !sellFeeExempt[from]) {
@@ -185,14 +198,17 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
             uint256 nodeAirdropFee = value * NODE_AIRDROP_BPS / BPS_DENOMINATOR;
             uint256 communityFee = value * COMMUNITY_BPS / BPS_DENOMINATOR;
             uint256 developmentFee = value * DEVELOPMENT_BPS / BPS_DENOMINATOR;
-            uint256 feeAmount = buybackFee + top100Fee + nodeAirdropFee + communityFee + developmentFee;
+            uint256 feeAmount =
+                buybackFee + top100Fee + nodeAirdropFee + communityFee + developmentFee;
             super._update(from, assetBuybackTreasury, buybackFee);
             super._update(from, top100Treasury, top100Fee);
             super._update(from, nodeAirdropTreasury, nodeAirdropFee);
             super._update(from, communityTreasury, communityFee);
             super._update(from, developmentTreasury, developmentFee);
             super._update(from, to, value - feeAmount);
-            if (liquidityCycleManager != address(0)) ILiquidityCycleManager(liquidityCycleManager).onAlpSold(from, value);
+            if (liquidityCycleManager != address(0)) {
+                ILiquidityCycleManager(liquidityCycleManager).onAlpSold(from, value);
+            }
             emit SellFeeCollected(from, value, feeAmount);
             return;
         }
@@ -201,7 +217,8 @@ contract ALPToken is ERC20, Ownable2Step, AccessControl {
         // credited as valid cycle activity; configured protocol transfers use
         // their narrow dedicated entry points instead of this path.
         if (
-            liquidityCycleManager != address(0) && from != address(0) && to != address(0) && from != pair && to != pair
+            liquidityCycleManager != address(0) && from != address(0) && to != address(0)
+                && from != pair && to != pair
         ) {
             ILiquidityCycleManager(liquidityCycleManager).beforeAlpTransfer(from, to, value);
         }

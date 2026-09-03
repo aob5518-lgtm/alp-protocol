@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {ChainlinkOracleAdapter} from "../src/ChainlinkOracleAdapter.sol";
-import {MockChainlinkFeed} from "./mocks/MockChainlinkFeed.sol";
+import { Test } from "forge-std/Test.sol";
+import { ChainlinkOracleAdapter } from "../src/ChainlinkOracleAdapter.sol";
+import { MockChainlinkFeed } from "./mocks/MockChainlinkFeed.sol";
 
 contract ChainlinkOracleAdapterTest is Test {
     address internal token = makeAddr("card");
@@ -28,7 +28,12 @@ contract ChainlinkOracleAdapterTest is Test {
         vm.warp(2 hours);
         feed.setRound(1, 1e8, block.timestamp - 1 hours - 1, 1);
         vm.expectRevert(
-            abi.encodeWithSelector(ChainlinkOracleAdapter.StalePrice.selector, token, block.timestamp - 1 hours - 1, 1 hours)
+            abi.encodeWithSelector(
+                ChainlinkOracleAdapter.StalePrice.selector,
+                token,
+                block.timestamp - 1 hours - 1,
+                1 hours
+            )
         );
         adapter.getPrice(token);
         assertFalse(adapter.isPriceValid(token));
@@ -36,7 +41,9 @@ contract ChainlinkOracleAdapterTest is Test {
 
     function testIncompleteRoundIsRejected() public {
         feed.setRound(2, 1e8, block.timestamp, 1);
-        vm.expectRevert(abi.encodeWithSelector(ChainlinkOracleAdapter.IncompleteRound.selector, token, 2, 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(ChainlinkOracleAdapter.IncompleteRound.selector, token, 2, 1)
+        );
         adapter.getPrice(token);
     }
 }

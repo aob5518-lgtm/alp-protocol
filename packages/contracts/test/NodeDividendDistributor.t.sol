@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
-import {NodeRegistry} from "../src/NodeRegistry.sol";
-import {NodeDividendDistributor} from "../src/NodeDividendDistributor.sol";
+import { Test } from "forge-std/Test.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { NodeRegistry } from "../src/NodeRegistry.sol";
+import { NodeDividendDistributor } from "../src/NodeDividendDistributor.sol";
 
 contract NodeDividendDistributorTest is Test {
     address internal treasury = makeAddr("nodeTreasury");
@@ -29,7 +29,8 @@ contract NodeDividendDistributorTest is Test {
     function testSnapshotRootPaysNodeOwnerOnce() public {
         uint256 epochId = 7;
         uint256 amount = 12 ether;
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, nodeId, owner, amount))));
+        bytes32 leaf =
+            keccak256(bytes.concat(keccak256(abi.encode(epochId, nodeId, owner, amount))));
         distributor.submitRoot(epochId, leaf, uint64(block.number), uint128(amount));
         bytes32[] memory emptyProof;
         vm.prank(owner);
@@ -37,30 +38,38 @@ contract NodeDividendDistributorTest is Test {
         assertEq(usdt.balanceOf(owner), amount);
         assertTrue(distributor.claimed(epochId, nodeId));
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(NodeDividendDistributor.AlreadyClaimed.selector, epochId, nodeId));
+        vm.expectRevert(
+            abi.encodeWithSelector(NodeDividendDistributor.AlreadyClaimed.selector, epochId, nodeId)
+        );
         distributor.claim(epochId, nodeId, amount, emptyProof);
     }
 
     function testOnlyCurrentNodeOwnerCanClaim() public {
         uint256 epochId = 8;
         uint256 amount = 1 ether;
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, nodeId, owner, amount))));
+        bytes32 leaf =
+            keccak256(bytes.concat(keccak256(abi.encode(epochId, nodeId, owner, amount))));
         distributor.submitRoot(epochId, leaf, uint64(block.number), uint128(amount));
         bytes32[] memory emptyProof;
         address stranger = makeAddr("stranger");
         vm.prank(stranger);
-        vm.expectRevert(abi.encodeWithSelector(NodeDividendDistributor.NotNodeOwner.selector, stranger, nodeId));
+        vm.expectRevert(
+            abi.encodeWithSelector(NodeDividendDistributor.NotNodeOwner.selector, stranger, nodeId)
+        );
         distributor.claim(epochId, nodeId, amount, emptyProof);
     }
 
     function testEpochClaimsCannotExceedCommittedSnapshotTotal() public {
         uint256 epochId = 9;
         uint256 amount = 25 ether;
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, nodeId, owner, amount))));
+        bytes32 leaf =
+            keccak256(bytes.concat(keccak256(abi.encode(epochId, nodeId, owner, amount))));
         distributor.submitRoot(epochId, leaf, uint64(block.number), uint128(20 ether));
         vm.prank(owner);
         vm.expectRevert(
-            abi.encodeWithSelector(NodeDividendDistributor.EpochAllocationExceeded.selector, epochId, amount, 20 ether)
+            abi.encodeWithSelector(
+                NodeDividendDistributor.EpochAllocationExceeded.selector, epochId, amount, 20 ether
+            )
         );
         distributor.claim(epochId, nodeId, amount, new bytes32[](0));
     }

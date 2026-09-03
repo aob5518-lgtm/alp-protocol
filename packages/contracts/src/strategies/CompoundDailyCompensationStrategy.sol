@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {ICompensationStrategy} from "../interfaces/ICompensationStrategy.sol";
+import { ICompensationStrategy } from "../interfaces/ICompensationStrategy.sol";
 
 /// @notice 1.01^days multiplier, in WAD precision. Exponentiation is intentionally bounded.
 contract CompoundDailyCompensationStrategy is ICompensationStrategy {

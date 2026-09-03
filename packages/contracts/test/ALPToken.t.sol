@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {ALPToken} from "../src/ALPToken.sol";
-import {GenesisReserve} from "../src/GenesisReserve.sol";
+import { Test } from "forge-std/Test.sol";
+import { ALPToken } from "../src/ALPToken.sol";
+import { GenesisReserve } from "../src/GenesisReserve.sol";
 
 contract ALPTokenTest is Test {
     address internal reserve = makeAddr("reserve");
@@ -21,7 +21,9 @@ contract ALPTokenTest is Test {
     function setUp() public {
         genesisReserve = new GenesisReserve(address(this));
         reserve = address(genesisReserve);
-        alp = new ALPToken(reserve, address(this), buyback, top100, nodeAirdrop, community, development);
+        alp = new ALPToken(
+            reserve, address(this), buyback, top100, nodeAirdrop, community, development
+        );
         genesisReserve.configureToken(address(alp));
         alp.configureMainPair(pair);
         alp.setSellFeeExempt(reserve, true);
@@ -64,7 +66,11 @@ contract ALPTokenTest is Test {
         uint256 amount = bound(uint256(rawAmount), 1, 100 ether);
         vm.prank(seller);
         alp.transfer(pair, amount);
-        assertEq(alp.balanceOf(seller) + alp.balanceOf(pair) + alp.balanceOf(buyback) + alp.balanceOf(top100)
-            + alp.balanceOf(nodeAirdrop) + alp.balanceOf(community) + alp.balanceOf(development), 100 ether);
+        assertEq(
+            alp.balanceOf(seller) + alp.balanceOf(pair) + alp.balanceOf(buyback)
+                + alp.balanceOf(top100) + alp.balanceOf(nodeAirdrop) + alp.balanceOf(community)
+                + alp.balanceOf(development),
+            100 ether
+        );
     }
 }

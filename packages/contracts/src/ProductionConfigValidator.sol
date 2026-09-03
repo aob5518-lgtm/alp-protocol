@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @notice Explicit on-chain safety gate used by deployment and admin tooling before a production launch.
 contract ProductionConfigValidator is AccessControl {
@@ -42,7 +42,10 @@ contract ProductionConfigValidator is AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    function configure(Configuration calldata configuration_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function configure(Configuration calldata configuration_)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         if (productionMode) revert ProductionAlreadyEnabled();
         configuration = configuration_;
         emit ConfigurationUpdated(configuration_);
@@ -51,10 +54,11 @@ contract ProductionConfigValidator is AccessControl {
     function readyForProduction() public view returns (bool) {
         Configuration memory c = configuration;
         return c.rewardSplitConfigured && c.liquidityALPSourceConfigured && c.tierVolumeBaseApproved
-            && c.tierSnapshotSystemConfigured && c.emissionScheduleApproved && c.protocolModulesSealed
-            && c.protocolExemptionsSealed && c.oracleConfigured && c.mainPairConfigured && c.treasurySafeConfigured
-            && c.timelockConfigured && c.externalAuditApproved && c.auditApprovalHash != bytes32(0)
-            && _isContract(c.oracle) && _isContract(c.mainPair) && _isContract(c.treasurySafe) && _isContract(c.timelock)
+            && c.tierSnapshotSystemConfigured && c.emissionScheduleApproved
+            && c.protocolModulesSealed && c.protocolExemptionsSealed && c.oracleConfigured
+            && c.mainPairConfigured && c.treasurySafeConfigured && c.timelockConfigured
+            && c.externalAuditApproved && c.auditApprovalHash != bytes32(0) && _isContract(c.oracle)
+            && _isContract(c.mainPair) && _isContract(c.treasurySafe) && _isContract(c.timelock)
             && _isContract(c.compensationStrategy) && _isContract(c.nodeDividendFundingSource);
     }
 
@@ -64,5 +68,7 @@ contract ProductionConfigValidator is AccessControl {
         emit ProductionModeEnabled(msg.sender);
     }
 
-    function _isContract(address account) private view returns (bool) { return account != address(0) && account.code.length != 0; }
+    function _isContract(address account) private view returns (bool) {
+        return account != address(0) && account.code.length != 0;
+    }
 }

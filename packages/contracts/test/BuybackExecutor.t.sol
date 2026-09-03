@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
-import {MockOracleAdapter} from "./mocks/MockOracleAdapter.sol";
-import {MockPancakeRouter} from "./mocks/MockPancakeRouter.sol";
-import {BuybackExecutor} from "../src/BuybackExecutor.sol";
-import {ProductionConfigValidator} from "../src/ProductionConfigValidator.sol";
-import {ProtocolController} from "../src/ProtocolController.sol";
-import {IProtocolController} from "../src/interfaces/IProtocolController.sol";
+import { Test } from "forge-std/Test.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { MockOracleAdapter } from "./mocks/MockOracleAdapter.sol";
+import { MockPancakeRouter } from "./mocks/MockPancakeRouter.sol";
+import { BuybackExecutor } from "../src/BuybackExecutor.sol";
+import { ProductionConfigValidator } from "../src/ProductionConfigValidator.sol";
+import { ProtocolController } from "../src/ProtocolController.sol";
+import { IProtocolController } from "../src/interfaces/IProtocolController.sol";
 
 contract BuybackExecutorTest is Test {
     address internal treasury = makeAddr("buybackTreasury");
@@ -32,9 +32,17 @@ contract BuybackExecutorTest is Test {
         oracle.setTokenPrice(address(wbnb), 0.5 ether);
         router = new MockPancakeRouter();
         router.setRateWad(0.5 ether);
-        controller = new ProtocolController(new ProductionConfigValidator(address(this)), address(this));
+        controller =
+            new ProtocolController(new ProductionConfigValidator(address(this)), address(this));
         executor = new BuybackExecutor(
-            alp, treasury, oracle, recipient, 1 days, 500, IProtocolController(address(controller)), address(this)
+            alp,
+            treasury,
+            oracle,
+            recipient,
+            1 days,
+            500,
+            IProtocolController(address(controller)),
+            address(this)
         );
         executor.grantRole(executor.SCHEDULER_ROLE(), address(this));
         executor.setRouterWhitelist(address(router), true);
@@ -48,7 +56,8 @@ contract BuybackExecutorTest is Test {
     }
 
     function testQueuedBuybackUsesOracleMinimumAndApprovedRouter() public {
-        bytes32 tradeId = executor.queueTrade(address(router), address(alp), address(card), 100 ether);
+        bytes32 tradeId =
+            executor.queueTrade(address(router), address(alp), address(card), 100 ether);
         vm.warp(block.timestamp + 1 days);
         executor.executeTrade(tradeId, 47.5 ether, block.timestamp + 10 minutes);
         assertEq(alp.balanceOf(treasury), 0);
@@ -58,11 +67,23 @@ contract BuybackExecutorTest is Test {
     }
 
     function testTradeCannotExecuteBeforeTimelockOrBelowOracleBound() public {
-        bytes32 tradeId = executor.queueTrade(address(router), address(alp), address(card), 100 ether);
-        vm.expectRevert(abi.encodeWithSelector(BuybackExecutor.TradeNotReady.selector, tradeId, block.timestamp + 1 days, block.timestamp));
+        bytes32 tradeId =
+            executor.queueTrade(address(router), address(alp), address(card), 100 ether);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                BuybackExecutor.TradeNotReady.selector,
+                tradeId,
+                block.timestamp + 1 days,
+                block.timestamp
+            )
+        );
         executor.executeTrade(tradeId, 47.5 ether, block.timestamp + 10 minutes);
         vm.warp(block.timestamp + 1 days);
-        vm.expectRevert(abi.encodeWithSelector(BuybackExecutor.InsufficientMinimumOut.selector, 40 ether, 47.5 ether));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                BuybackExecutor.InsufficientMinimumOut.selector, 40 ether, 47.5 ether
+            )
+        );
         executor.executeTrade(tradeId, 40 ether, block.timestamp + 10 minutes);
     }
 
@@ -79,7 +100,8 @@ contract BuybackExecutorTest is Test {
     }
 
     function testEmergencyPauseBlocksQueuedTradeExecution() public {
-        bytes32 tradeId = executor.queueTrade(address(router), address(alp), address(card), 100 ether);
+        bytes32 tradeId =
+            executor.queueTrade(address(router), address(alp), address(card), 100 ether);
         vm.warp(block.timestamp + 1 days);
         controller.emergencyPause();
         vm.expectRevert(ProtocolController.ProtocolPaused.selector);

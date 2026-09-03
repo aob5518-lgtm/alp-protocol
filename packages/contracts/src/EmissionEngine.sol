@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ALPToken} from "./ALPToken.sol";
-import {GlobalComputeEngine} from "./GlobalComputeEngine.sol";
-import {IProtocolController} from "./interfaces/IProtocolController.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ALPToken } from "./ALPToken.sol";
+import { GlobalComputeEngine } from "./GlobalComputeEngine.sol";
+import { IProtocolController } from "./interfaces/IProtocolController.sol";
 
 interface IPancakeV2Pair {
     function sync() external;
@@ -62,16 +62,22 @@ contract EmissionEngine is Ownable2Step {
         uint16 burnRateBps,
         address indexed caller
     );
-    event EmissionActivated(uint64 indexed emissionStartTime, uint64 firstEpochTime, address indexed caller);
+    event EmissionActivated(
+        uint64 indexed emissionStartTime, uint64 firstEpochTime, address indexed caller
+    );
     event EmissionScheduleApproved(bytes32 indexed scheduleHash, address indexed governance);
     event ProtocolControllerConfigured(address indexed controller);
 
-    constructor(ALPToken alp_, GlobalComputeEngine computeEngine_, address mainPair_, uint64 firstEpochTime_, address initialOwner)
-        Ownable(initialOwner)
-    {
+    constructor(
+        ALPToken alp_,
+        GlobalComputeEngine computeEngine_,
+        address mainPair_,
+        uint64 firstEpochTime_,
+        address initialOwner
+    ) Ownable(initialOwner) {
         if (
-            address(alp_) == address(0) || address(computeEngine_) == address(0) || mainPair_ == address(0)
-                || initialOwner == address(0)
+            address(alp_) == address(0) || address(computeEngine_) == address(0)
+                || mainPair_ == address(0) || initialOwner == address(0)
         ) revert ZeroAddress();
         alp = alp_;
         computeEngine = computeEngine_;
@@ -89,8 +95,12 @@ contract EmissionEngine is Ownable2Step {
     }
 
     function configureProtocolController(IProtocolController controller) external onlyOwner {
-        if (address(controller) == address(0)) revert ZeroAddress(); if (address(protocolController) != address(0)) revert ProtocolControllerAlreadyConfigured();
-        protocolController = controller; emit ProtocolControllerConfigured(address(controller));
+        if (address(controller) == address(0)) revert ZeroAddress();
+        if (address(protocolController) != address(0)) {
+            revert ProtocolControllerAlreadyConfigured();
+        }
+        protocolController = controller;
+        emit ProtocolControllerConfigured(address(controller));
     }
 
     /// @notice The first epoch cannot start until actual user compute and governance schedule approval exist.
@@ -145,7 +155,15 @@ contract EmissionEngine is Ownable2Step {
         // Preserve the established cadence even if settlement happens late; no double settlement is possible.
         nextEpochTime = emissionStartTime + uint64(settledEpochId) * 1 days;
         emit EpochSettled(
-            settledEpochId, settledAt, reserveBefore, burnAmount, emissionAmount, reserveAfter, rate, uint16(BURN_BPS), msg.sender
+            settledEpochId,
+            settledAt,
+            reserveBefore,
+            burnAmount,
+            emissionAmount,
+            reserveAfter,
+            rate,
+            uint16(BURN_BPS),
+            msg.sender
         );
     }
 }

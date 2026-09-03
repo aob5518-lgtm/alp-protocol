@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @notice Governance-operated registry for Small and Big Launch Nodes. It has no custody capability.
 contract NodeRegistry is AccessControl {
@@ -11,8 +11,15 @@ contract NodeRegistry is AccessControl {
 
     bytes32 public constant NODE_OPERATOR_ROLE = keccak256("NODE_OPERATOR_ROLE");
 
-    enum NodeType { SMALL, BIG }
-    enum NodeStatus { ACTIVE, PAUSED, CLOSED }
+    enum NodeType {
+        SMALL,
+        BIG
+    }
+    enum NodeStatus {
+        ACTIVE,
+        PAUSED,
+        CLOSED
+    }
 
     struct Node {
         address owner;
@@ -27,7 +34,11 @@ contract NodeRegistry is AccessControl {
     mapping(uint256 => Node) private _nodes;
 
     event NodeCreated(
-        uint256 indexed nodeId, address indexed owner, NodeType indexed nodeType, uint256 weight, bytes32 region
+        uint256 indexed nodeId,
+        address indexed owner,
+        NodeType indexed nodeType,
+        uint256 weight,
+        bytes32 region
     );
     event NodeStatusUpdated(uint256 indexed nodeId, NodeStatus status);
 
@@ -55,8 +66,13 @@ contract NodeRegistry is AccessControl {
         emit NodeCreated(nodeId, owner, nodeType, weight, region);
     }
 
-    function setNodeStatus(uint256 nodeId, NodeStatus status) external onlyRole(NODE_OPERATOR_ROLE) {
-        if (_nodes[nodeId].owner == address(0)) revert NodeNotFound(nodeId);
+    function setNodeStatus(uint256 nodeId, NodeStatus status)
+        external
+        onlyRole(NODE_OPERATOR_ROLE)
+    {
+        if (_nodes[nodeId].owner == address(0)) {
+            revert NodeNotFound(nodeId);
+        }
         _nodes[nodeId].status = status;
         emit NodeStatusUpdated(nodeId, status);
     }

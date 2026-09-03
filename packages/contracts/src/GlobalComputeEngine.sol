@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IGlobalComputeEngine} from "./interfaces/IGlobalComputeEngine.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IGlobalComputeEngine } from "./interfaces/IGlobalComputeEngine.sol";
 
 /// @notice O(1) reward accounting across all pools. It never loops through users when an epoch is settled.
 contract GlobalComputeEngine is AccessControl, ReentrancyGuard, IGlobalComputeEngine {
@@ -37,7 +37,9 @@ contract GlobalComputeEngine is AccessControl, ReentrancyGuard, IGlobalComputeEn
     mapping(uint256 => ComputePosition) public positions;
 
     event PositionAdded(uint256 indexed positionId, address indexed user, uint256 effectiveCompute);
-    event EmissionNotified(uint256 amount, uint256 accRewardPerCompute, uint256 globalEffectiveCompute);
+    event EmissionNotified(
+        uint256 amount, uint256 accRewardPerCompute, uint256 globalEffectiveCompute
+    );
     event EmissionDeferred(uint256 amount);
     event RewardClaimed(address indexed user, uint256 indexed positionId, uint256 amount);
 
@@ -47,7 +49,10 @@ contract GlobalComputeEngine is AccessControl, ReentrancyGuard, IGlobalComputeEn
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    function addPosition(uint256 positionId, address user, uint256 effectiveCompute) external onlyRole(POOL_ROLE) {
+    function addPosition(uint256 positionId, address user, uint256 effectiveCompute)
+        external
+        onlyRole(POOL_ROLE)
+    {
         if (user == address(0)) revert ZeroAddress();
         if (positions[positionId].owner != address(0)) revert PositionAlreadyExists(positionId);
         if (effectiveCompute == 0 || effectiveCompute > type(uint128).max) revert InvalidCompute();
@@ -82,15 +87,21 @@ contract GlobalComputeEngine is AccessControl, ReentrancyGuard, IGlobalComputeEn
     function pending(uint256 positionId) public view returns (uint256) {
         ComputePosition storage position = positions[positionId];
         if (position.owner == address(0)) revert PositionNotFound(positionId);
-        return uint256(position.effectiveCompute) * accRewardPerCompute / ACC_PRECISION - position.rewardDebt;
+        return uint256(position.effectiveCompute) * accRewardPerCompute / ACC_PRECISION
+            - position.rewardDebt;
     }
 
-    function claim(uint256 positionId, address recipient) external nonReentrant returns (uint256 amount) {
+    function claim(uint256 positionId, address recipient)
+        external
+        nonReentrant
+        returns (uint256 amount)
+    {
         ComputePosition storage position = positions[positionId];
         if (position.owner == address(0)) revert PositionNotFound(positionId);
         if (msg.sender != position.owner) revert NotPositionOwner(msg.sender, positionId);
         if (recipient == address(0)) revert ZeroAddress();
-        amount = uint256(position.effectiveCompute) * accRewardPerCompute / ACC_PRECISION - position.rewardDebt;
+        amount = uint256(position.effectiveCompute) * accRewardPerCompute / ACC_PRECISION
+            - position.rewardDebt;
         position.rewardDebt += amount;
         totalClaimed += amount;
         if (amount != 0) alp.safeTransfer(recipient, amount);

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {SponsorRegistry} from "./SponsorRegistry.sol";
-import {ITierEngine} from "./interfaces/ITierEngine.sol";
-import {TierSnapshotRegistry} from "./TierSnapshotRegistry.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { SponsorRegistry } from "./SponsorRegistry.sol";
+import { ITierEngine } from "./interfaces/ITierEngine.sol";
+import { TierSnapshotRegistry } from "./TierSnapshotRegistry.sol";
 
 /// @notice Maintains 20-level referral-tree volume without unbounded traversal or database trust.
 contract TierEngine is AccessControl, ITierEngine {
@@ -15,7 +15,10 @@ contract TierEngine is AccessControl, ITierEngine {
     bytes32 public constant POOL_FACTORY_ROLE = keccak256("POOL_FACTORY_ROLE");
     uint8 public constant MAX_DEPTH = 20;
 
-    enum VolumeBase { USDT_CONTRIBUTION, TOTAL_POSITION_VALUE }
+    enum VolumeBase {
+        USDT_CONTRIBUTION,
+        TOTAL_POSITION_VALUE
+    }
 
     struct TierDefinition {
         uint128 requiredSmallDistrictVolume;
@@ -48,7 +51,10 @@ contract TierEngine is AccessControl, ITierEngine {
     }
 
     /// @notice Enables the unlimited-depth, indexer-generated, Merkle-verified V1-V9 authority.
-    function configureSnapshotRegistry(TierSnapshotRegistry registry) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function configureSnapshotRegistry(TierSnapshotRegistry registry)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         if (address(registry) == address(0)) revert ZeroAddress();
         snapshotRegistry = registry;
     }
@@ -63,7 +69,8 @@ contract TierEngine is AccessControl, ITierEngine {
         override
         onlyRole(POOL_ROLE)
     {
-        uint256 volume = volumeBase == VolumeBase.USDT_CONTRIBUTION ? usdtContribution : totalPositionValue;
+        uint256 volume =
+            volumeBase == VolumeBase.USDT_CONTRIBUTION ? usdtContribution : totalPositionValue;
         if (volume == 0) revert InvalidVolume();
         address directBranch = user;
         address cursor = user;
@@ -106,7 +113,9 @@ contract TierEngine is AccessControl, ITierEngine {
         if (address(snapshotRegistry) != address(0)) return snapshotRegistry.currentTier(user);
         uint256 smallDistrictVolume = smallDistrictVolumeOf(user);
         for (uint8 tier = 9; tier != 0; --tier) {
-            if (smallDistrictVolume >= tierDefinition(tier).requiredSmallDistrictVolume) return tier;
+            if (smallDistrictVolume >= tierDefinition(tier).requiredSmallDistrictVolume) {
+                return tier;
+            }
         }
         return 0;
     }

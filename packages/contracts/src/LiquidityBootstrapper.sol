@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {ALPToken} from "./ALPToken.sol";
-import {ILiquidityALPSource} from "./interfaces/ILiquidityALPSource.sol";
-import {IPancakeV2Router} from "./interfaces/IPancakeV2Router.sol";
-import {IPancakeV2Factory} from "./interfaces/IPancakeV2Factory.sol";
-import {PermanentLiquidityLocker} from "./PermanentLiquidityLocker.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { ALPToken } from "./ALPToken.sol";
+import { ILiquidityALPSource } from "./interfaces/ILiquidityALPSource.sol";
+import { IPancakeV2Router } from "./interfaces/IPancakeV2Router.sol";
+import { IPancakeV2Factory } from "./interfaces/IPancakeV2Factory.sol";
+import { PermanentLiquidityLocker } from "./PermanentLiquidityLocker.sol";
 
 /// @notice One-time ALP/USDT pair initialization at the fixed V1 target price.
 contract LiquidityBootstrapper is Ownable2Step {
@@ -51,8 +51,9 @@ contract LiquidityBootstrapper is Ownable2Step {
         address initialOwner
     ) Ownable(initialOwner) {
         if (
-            address(alp_) == address(0) || address(usdt_) == address(0) || address(source_) == address(0)
-                || address(router_) == address(0) || address(factory_) == address(0) || address(locker_) == address(0)
+            address(alp_) == address(0) || address(usdt_) == address(0)
+                || address(source_) == address(0) || address(router_) == address(0)
+                || address(factory_) == address(0) || address(locker_) == address(0)
                 || initialOwner == address(0)
         ) revert ZeroAddress();
         alp = alp_;
@@ -68,23 +69,39 @@ contract LiquidityBootstrapper is Ownable2Step {
         return valueWad * (10 ** usdt.decimals()) / 1e18;
     }
 
-    function initialize(uint256 alpAmount, uint256 usdtAmount, uint256 minAlpAmount, uint256 minUsdtAmount, uint256 deadline)
+    function initialize(
+        uint256 alpAmount,
+        uint256 usdtAmount,
+        uint256 minAlpAmount,
+        uint256 minUsdtAmount,
+        uint256 deadline
+    )
         external
         onlyOwner
         returns (address pair, uint256 usedAlp, uint256 usedUsdt, uint256 lpAmount)
     {
-        if (initialized) revert AlreadyInitialized();
+        if (initialized) {
+            revert AlreadyInitialized();
+        }
         uint256 requiredUsdt = requiredUsdtForAlp(alpAmount);
         if (usdtAmount != requiredUsdt) revert PriceRatioMismatch(usdtAmount, requiredUsdt);
         pair = factory.getPair(address(alp), address(usdt));
         if (pair == address(0)) pair = factory.createPair(address(alp), address(usdt));
-        bytes32 operation = keccak256(abi.encodePacked("BOOTSTRAP", block.chainid, alpAmount, usdtAmount));
+        bytes32 operation =
+            keccak256(abi.encodePacked("BOOTSTRAP", block.chainid, alpAmount, usdtAmount));
         source.provideLiquidityALP(address(this), alpAmount, operation);
         IERC20(address(alp)).forceApprove(address(router), alpAmount);
         usdt.safeTransferFrom(msg.sender, address(this), usdtAmount);
         usdt.forceApprove(address(router), usdtAmount);
         (usedAlp, usedUsdt, lpAmount) = router.addLiquidity(
-            address(alp), address(usdt), alpAmount, usdtAmount, minAlpAmount, minUsdtAmount, address(locker), deadline
+            address(alp),
+            address(usdt),
+            alpAmount,
+            usdtAmount,
+            minAlpAmount,
+            minUsdtAmount,
+            address(locker),
+            deadline
         );
         uint256 requiredUsedUsdt = requiredUsdtForAlp(usedAlp);
         if (usedAlp == 0 || usedUsdt != requiredUsedUsdt) {
@@ -96,6 +113,8 @@ contract LiquidityBootstrapper is Ownable2Step {
         alp.configureMainPairFromBootstrapper(pair);
         initialized = true;
         mainPair = pair;
-        emit LiquidityBootstrapped(pair, usedAlp, usedUsdt, lpAmount, TARGET_PRICE_E18, address(locker));
+        emit LiquidityBootstrapped(
+            pair, usedAlp, usedUsdt, lpAmount, TARGET_PRICE_E18, address(locker)
+        );
     }
 }

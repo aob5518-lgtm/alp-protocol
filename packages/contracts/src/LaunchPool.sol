@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {AssetRegistry} from "./AssetRegistry.sol";
-import {IPriceOracleAdapter} from "./interfaces/IPriceOracleAdapter.sol";
-import {ICompensationStrategy} from "./interfaces/ICompensationStrategy.sol";
-import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
-import {IGlobalComputeEngine} from "./interfaces/IGlobalComputeEngine.sol";
-import {ITierEngine} from "./interfaces/ITierEngine.sol";
-import {IDifferentialRewardEngine} from "./interfaces/IDifferentialRewardEngine.sol";
-import {ILiquidityManager} from "./interfaces/ILiquidityManager.sol";
-import {IProtocolController} from "./interfaces/IProtocolController.sol";
-import {SponsorRegistry} from "./SponsorRegistry.sol";
-import {ReferralRewardEngine} from "./ReferralRewardEngine.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { AssetRegistry } from "./AssetRegistry.sol";
+import { IPriceOracleAdapter } from "./interfaces/IPriceOracleAdapter.sol";
+import { ICompensationStrategy } from "./interfaces/ICompensationStrategy.sol";
+import { IPartnerAssetVault } from "./interfaces/IPartnerAssetVault.sol";
+import { IGlobalComputeEngine } from "./interfaces/IGlobalComputeEngine.sol";
+import { ITierEngine } from "./interfaces/ITierEngine.sol";
+import { IDifferentialRewardEngine } from "./interfaces/IDifferentialRewardEngine.sol";
+import { ILiquidityManager } from "./interfaces/ILiquidityManager.sol";
+import { IProtocolController } from "./interfaces/IProtocolController.sol";
+import { SponsorRegistry } from "./SponsorRegistry.sol";
+import { ReferralRewardEngine } from "./ReferralRewardEngine.sol";
 
 /// @notice Immutable per-asset pool. The compensation method and compute weight cannot change after deployment.
 contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
@@ -36,7 +36,11 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public constant HALF_BPS = 5_000;
     uint256 public constant WAD = 1e18;
 
-    enum PositionStatus { ACTIVE, PAUSED, CLOSED }
+    enum PositionStatus {
+        ACTIVE,
+        PAUSED,
+        CLOSED
+    }
 
     struct Position {
         address user;
@@ -107,16 +111,21 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 computeWeightE18_
     ) Ownable(initialOwner) {
         if (
-            initialOwner == address(0) || address(registry_) == address(0) || address(usdt_) == address(0)
-                || address(computeEngine_) == address(0) || address(compensationStrategy_) == address(0)
-                || address(sponsorRegistry_) == address(0) || address(referralRewardEngine_) == address(0)
+            initialOwner == address(0) || address(registry_) == address(0)
+                || address(usdt_) == address(0) || address(computeEngine_) == address(0)
+                || address(compensationStrategy_) == address(0)
+                || address(sponsorRegistry_) == address(0)
+                || address(referralRewardEngine_) == address(0)
                 || address(tierEngine_) == address(0)
-                || address(differentialRewardEngine_) == address(0) || address(protocolController_) == address(0)
-                || rewardTreasury_ == address(0) || address(liquidityManager_) == address(0)
+                || address(differentialRewardEngine_) == address(0)
+                || address(protocolController_) == address(0) || rewardTreasury_ == address(0)
+                || address(liquidityManager_) == address(0)
         ) revert InvalidAddress();
         if (computeWeightE18_ == 0 || computeWeightE18_ > 10 * WAD) revert InvalidWeight();
         AssetRegistry.AssetConfig memory assetConfig = registry_.asset(assetId_);
-        if (assetConfig.launchStatus != AssetRegistry.LaunchStatus.ACTIVE) revert AssetUnavailable(assetId_);
+        if (assetConfig.launchStatus != AssetRegistry.LaunchStatus.ACTIVE) {
+            revert AssetUnavailable(assetId_);
+        }
         registry = registry_;
         assetId = assetId_;
         partnerToken = IERC20Metadata(assetConfig.token);
@@ -139,10 +148,16 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         usdtDecimals = usdt_.decimals();
     }
 
-    function quote(uint256 totalValueUSDT) public view returns (uint256 partnerAmount, uint256 usdtAmount, uint256 priceE18) {
+    function quote(uint256 totalValueUSDT)
+        public
+        view
+        returns (uint256 partnerAmount, uint256 usdtAmount, uint256 priceE18)
+    {
         if (totalValueUSDT == 0) revert InvalidPositionValue();
         (priceE18,) = oracle.getPrice(address(partnerToken));
-        if (priceE18 == 0 || !oracle.isPriceValid(address(partnerToken))) revert OraclePriceInvalid();
+        if (priceE18 == 0 || !oracle.isPriceValid(address(partnerToken))) {
+            revert OraclePriceInvalid();
+        }
         uint256 halfValue = totalValueUSDT * HALF_BPS / BPS_DENOMINATOR;
         partnerAmount = halfValue * (10 ** partnerTokenDecimals) / priceE18;
         usdtAmount = halfValue * (10 ** usdtDecimals) / WAD;
@@ -160,7 +175,9 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         if (block.timestamp < launchTime) revert PoolNotLive(launchTime);
         if (!registry.canCreatePosition(assetId)) revert AssetUnavailable(assetId);
         (uint256 partnerAmount, uint256 usdtAmount,) = quote(totalValueUSDT);
-        if (partnerAmount > maxPartnerTokenAmount) revert PartnerTokenSlippage(partnerAmount, maxPartnerTokenAmount);
+        if (partnerAmount > maxPartnerTokenAmount) {
+            revert PartnerTokenSlippage(partnerAmount, maxPartnerTokenAmount);
+        }
         uint256 rewardTreasuryAmount = usdtAmount * HALF_BPS / BPS_DENOMINATOR;
         uint256 liquidityAmount = usdtAmount - rewardTreasuryAmount;
         uint256 elapsedDays = (block.timestamp - launchTime) / 1 days;
@@ -172,7 +189,8 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 globalPositionId = globalPositionKey(positionId);
         vault.deposit(msg.sender, partnerAmount, assetId, globalPositionId);
         IERC20(address(usdt)).safeTransferFrom(msg.sender, rewardTreasury, rewardTreasuryAmount);
-        IERC20(address(usdt)).safeTransferFrom(msg.sender, address(liquidityManager), liquidityAmount);
+        IERC20(address(usdt))
+            .safeTransferFrom(msg.sender, address(liquidityManager), liquidityAmount);
         liquidityManager.receiveLiquidityAllocation(assetId, liquidityAmount);
         positions[positionId] = Position({
             user: msg.sender,
@@ -194,7 +212,14 @@ contract LaunchPool is Ownable2Step, Pausable, ReentrancyGuard {
         tierEngine.recordPosition(msg.sender, usdtAmount, totalValueUSDT);
         differentialRewardEngine.distribute(globalPositionId, msg.sender, usdtAmount);
         emit PositionCreated(
-            positionId, globalPositionId, msg.sender, partnerAmount, usdtAmount, totalValueUSDT, effectiveCompute, factorE18
+            positionId,
+            globalPositionId,
+            msg.sender,
+            partnerAmount,
+            usdtAmount,
+            totalValueUSDT,
+            effectiveCompute,
+            factorE18
         );
     }
 

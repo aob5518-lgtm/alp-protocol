@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {AssetRegistry} from "./AssetRegistry.sol";
-import {LaunchPool} from "./LaunchPool.sol";
-import {GlobalComputeEngine} from "./GlobalComputeEngine.sol";
-import {SponsorRegistry} from "./SponsorRegistry.sol";
-import {ReferralRewardEngine} from "./ReferralRewardEngine.sol";
-import {ICompensationStrategy} from "./interfaces/ICompensationStrategy.sol";
-import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
-import {TierEngine} from "./TierEngine.sol";
-import {DifferentialRewardEngine} from "./DifferentialRewardEngine.sol";
-import {ILiquidityManager} from "./interfaces/ILiquidityManager.sol";
-import {IProtocolController} from "./interfaces/IProtocolController.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AssetRegistry } from "./AssetRegistry.sol";
+import { LaunchPool } from "./LaunchPool.sol";
+import { GlobalComputeEngine } from "./GlobalComputeEngine.sol";
+import { SponsorRegistry } from "./SponsorRegistry.sol";
+import { ReferralRewardEngine } from "./ReferralRewardEngine.sol";
+import { ICompensationStrategy } from "./interfaces/ICompensationStrategy.sol";
+import { IPartnerAssetVault } from "./interfaces/IPartnerAssetVault.sol";
+import { TierEngine } from "./TierEngine.sol";
+import { DifferentialRewardEngine } from "./DifferentialRewardEngine.sol";
+import { ILiquidityManager } from "./interfaces/ILiquidityManager.sol";
+import { IProtocolController } from "./interfaces/IProtocolController.sol";
 
 /// @notice Creates per-asset pools and grants them only the narrow roles required for position accounting.
 contract LaunchPoolFactory is Ownable2Step {
@@ -61,11 +61,13 @@ contract LaunchPoolFactory is Ownable2Step {
         IProtocolController protocolController_
     ) Ownable(initialOwner) {
         if (
-            initialOwner == address(0) || address(registry_) == address(0) || address(usdt_) == address(0)
-                || address(computeEngine_) == address(0) || address(sponsorRegistry_) == address(0)
+            initialOwner == address(0) || address(registry_) == address(0)
+                || address(usdt_) == address(0) || address(computeEngine_) == address(0)
+                || address(sponsorRegistry_) == address(0)
                 || address(referralRewardEngine_) == address(0)
                 || address(tierEngine_) == address(0)
-                || address(differentialRewardEngine_) == address(0) || address(protocolController_) == address(0)
+                || address(differentialRewardEngine_) == address(0)
+                || address(protocolController_) == address(0)
         ) revert ZeroAddress();
         registry = registry_;
         usdt = usdt_;
@@ -77,14 +79,20 @@ contract LaunchPoolFactory is Ownable2Step {
         protocolController = protocolController_;
     }
 
-    function createPool(uint256 assetId, PoolConfig calldata config) external onlyOwner returns (LaunchPool pool) {
+    function createPool(uint256 assetId, PoolConfig calldata config)
+        external
+        onlyOwner
+        returns (LaunchPool pool)
+    {
         if (
             config.poolOwner == address(0) || address(config.compensationStrategy) == address(0)
-                || config.rewardTreasury == address(0) || address(config.liquidityManager) == address(0)
-                || config.computeWeightE18 == 0
+                || config.rewardTreasury == address(0)
+                || address(config.liquidityManager) == address(0) || config.computeWeightE18 == 0
         ) revert InvalidPoolConfiguration();
         AssetRegistry.AssetConfig memory assetConfig = registry.asset(assetId);
-        if (assetConfig.launchStatus != AssetRegistry.LaunchStatus.ACTIVE) revert AssetNotActive(assetId);
+        if (assetConfig.launchStatus != AssetRegistry.LaunchStatus.ACTIVE) {
+            revert AssetNotActive(assetId);
+        }
         pool = new LaunchPool(
             config.poolOwner,
             registry,
@@ -111,7 +119,13 @@ contract LaunchPoolFactory is Ownable2Step {
         _poolsForAsset[assetId].push(address(pool));
         isPool[address(pool)] = true;
         registry.sealAsset(assetId, address(pool));
-        emit LaunchPoolCreated(assetId, address(pool), config.poolOwner, address(config.compensationStrategy), config.computeWeightE18);
+        emit LaunchPoolCreated(
+            assetId,
+            address(pool),
+            config.poolOwner,
+            address(config.compensationStrategy),
+            config.computeWeightE18
+        );
     }
 
     function poolCount(uint256 assetId) external view returns (uint256) {

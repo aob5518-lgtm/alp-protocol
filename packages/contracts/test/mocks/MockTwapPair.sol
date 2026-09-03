@@ -15,7 +15,13 @@ contract MockTwapPair {
         token1 = token1_;
     }
 
-    function setState(uint256 cumulative0, uint256 cumulative1, uint112 reserve0_, uint112 reserve1_, uint32 timestamp_) external {
+    function setState(
+        uint256 cumulative0,
+        uint256 cumulative1,
+        uint112 reserve0_,
+        uint112 reserve1_,
+        uint32 timestamp_
+    ) external {
         price0CumulativeLast = cumulative0;
         price1CumulativeLast = cumulative1;
         reserve0 = reserve0_;

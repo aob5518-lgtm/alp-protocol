@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IPriceOracleAdapter} from "../../src/interfaces/IPriceOracleAdapter.sol";
+import { IPriceOracleAdapter } from "../../src/interfaces/IPriceOracleAdapter.sol";
 
 contract MockOracleAdapter is IPriceOracleAdapter {
     uint256 public priceE18;

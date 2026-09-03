@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {ALPToken} from "../src/ALPToken.sol";
-import {GenesisReserve} from "../src/GenesisReserve.sol";
-import {LiquidityCycleManager} from "../src/LiquidityCycleManager.sol";
+import { Test } from "forge-std/Test.sol";
+import { ALPToken } from "../src/ALPToken.sol";
+import { GenesisReserve } from "../src/GenesisReserve.sol";
+import { LiquidityCycleManager } from "../src/LiquidityCycleManager.sol";
 
 contract LiquidityCycleManagerTest is Test {
     address internal reserve = makeAddr("reserve");
@@ -41,7 +41,8 @@ contract LiquidityCycleManagerTest is Test {
         manager.settleOverdueCycle(user, 0);
         assertEq(alp.balanceOf(user), 80 ether);
         assertEq(alp.totalSupply(), 210_000_000 ether - 20 ether);
-        (uint256 required, uint256 sold, uint256 burned, bool settled) = manager.cycleProgress(user, 0);
+        (uint256 required, uint256 sold, uint256 burned, bool settled) =
+            manager.cycleProgress(user, 0);
         assertEq(required, 20 ether);
         assertEq(sold, 0);
         assertEq(burned, 20 ether);
@@ -87,7 +88,10 @@ contract LiquidityCycleManagerTest is Test {
         vm.prank(user);
         vm.expectRevert(
             abi.encodeWithSelector(
-                LiquidityCycleManager.LiquidityObligationViolation.selector, user, 19 ether, 20 ether
+                LiquidityCycleManager.LiquidityObligationViolation.selector,
+                user,
+                19 ether,
+                20 ether
             )
         );
         alp.transfer(recipient, 81 ether);

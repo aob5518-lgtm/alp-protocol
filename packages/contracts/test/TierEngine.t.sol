@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {SponsorRegistry} from "../src/SponsorRegistry.sol";
-import {TierEngine} from "../src/TierEngine.sol";
+import { Test } from "forge-std/Test.sol";
+import { SponsorRegistry } from "../src/SponsorRegistry.sol";
+import { TierEngine } from "../src/TierEngine.sol";
 
 contract TierEngineTest is Test {
     SponsorRegistry internal sponsors;
@@ -36,7 +36,8 @@ contract TierEngineTest is Test {
     }
 
     function testTotalPositionValueStrategyCanBeSelectedForNewEngine() public {
-        TierEngine totalValueTiers = new TierEngine(sponsors, TierEngine.VolumeBase.TOTAL_POSITION_VALUE, address(this));
+        TierEngine totalValueTiers =
+            new TierEngine(sponsors, TierEngine.VolumeBase.TOTAL_POSITION_VALUE, address(this));
         totalValueTiers.grantRole(totalValueTiers.POOL_ROLE(), address(this));
         totalValueTiers.recordPosition(branchA, 500 ether, 1_000 ether);
         assertEq(totalValueTiers.totalNetworkVolume(root), 1_000 ether);

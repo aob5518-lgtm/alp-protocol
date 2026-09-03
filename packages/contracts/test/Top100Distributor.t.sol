@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
-import {Top100Distributor} from "../src/Top100Distributor.sol";
+import { Test } from "forge-std/Test.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { Top100Distributor } from "../src/Top100Distributor.sol";
 
 contract Top100DistributorTest is Test {
     address internal treasury = makeAddr("top100Treasury");
@@ -25,7 +25,8 @@ contract Top100DistributorTest is Test {
         uint8 rank = 1;
         uint256 compute = 500_000 ether;
         uint256 amount = 10 ether;
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, rank, winner, compute, amount))));
+        bytes32 leaf =
+            keccak256(bytes.concat(keccak256(abi.encode(epochId, rank, winner, compute, amount))));
         distributor.submitRoot(epochId, leaf, uint64(block.number), uint128(amount));
         bytes32[] memory emptyProof;
         vm.prank(winner);
@@ -40,12 +41,15 @@ contract Top100DistributorTest is Test {
         distributor.claim(1, 101, 0, 0, new bytes32[](0));
 
         uint256 epochId = 13;
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, 100, winner, 1 ether, 1 ether))));
+        bytes32 leaf =
+            keccak256(bytes.concat(keccak256(abi.encode(epochId, 100, winner, 1 ether, 1 ether))));
         distributor.submitRoot(epochId, leaf, uint64(block.number), uint128(1 ether));
         bytes32[] memory emptyProof;
         vm.startPrank(winner);
         distributor.claim(epochId, 100, 1 ether, 1 ether, emptyProof);
-        vm.expectRevert(abi.encodeWithSelector(Top100Distributor.AlreadyClaimed.selector, epochId, winner));
+        vm.expectRevert(
+            abi.encodeWithSelector(Top100Distributor.AlreadyClaimed.selector, epochId, winner)
+        );
         distributor.claim(epochId, 100, 1 ether, 1 ether, emptyProof);
         vm.stopPrank();
     }
@@ -53,11 +57,14 @@ contract Top100DistributorTest is Test {
     function testEpochClaimsCannotExceedCommittedSnapshotTotal() public {
         uint256 epochId = 14;
         uint256 amount = 25 ether;
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(epochId, 1, winner, 1 ether, amount))));
+        bytes32 leaf =
+            keccak256(bytes.concat(keccak256(abi.encode(epochId, 1, winner, 1 ether, amount))));
         distributor.submitRoot(epochId, leaf, uint64(block.number), uint128(20 ether));
         vm.prank(winner);
         vm.expectRevert(
-            abi.encodeWithSelector(Top100Distributor.EpochAllocationExceeded.selector, epochId, amount, 20 ether)
+            abi.encodeWithSelector(
+                Top100Distributor.EpochAllocationExceeded.selector, epochId, amount, 20 ether
+            )
         );
         distributor.claim(epochId, 1, 1 ether, amount, new bytes32[](0));
     }

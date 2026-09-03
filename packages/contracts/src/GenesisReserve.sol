@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IGenesisReserveToken is IERC20 {
     function burnFromGenesisReserve(uint256 amount) external;
@@ -56,13 +56,19 @@ contract GenesisReserve is AccessControl {
         emit ProtocolModuleUpdated(module, allowed);
     }
 
-    function sealProtocolModules() external onlyRole(DEFAULT_ADMIN_ROLE) { if (modulesSealed) revert ProtocolModulesSealed(); modulesSealed = true; emit ProtocolModulesSealActivated(); }
+    function sealProtocolModules() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (modulesSealed) revert ProtocolModulesSealed();
+        modulesSealed = true;
+        emit ProtocolModulesSealActivated();
+    }
 
     function releaseToProtocol(address recipient, uint256 amount, bytes32 operation)
         external
         onlyRole(PROTOCOL_MODULE_ROLE)
     {
-        if (!hasRole(PROTOCOL_MODULE_ROLE, recipient)) revert RecipientNotProtocolModule(recipient);
+        if (!hasRole(PROTOCOL_MODULE_ROLE, recipient)) {
+            revert RecipientNotProtocolModule(recipient);
+        }
         IERC20(address(token)).safeTransfer(recipient, amount);
         emit GenesisReserveMovement(msg.sender, recipient, amount, operation);
     }

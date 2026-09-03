@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
-import {SponsorRegistry} from "../src/SponsorRegistry.sol";
-import {TierEngine} from "../src/TierEngine.sol";
-import {DifferentialRewardEngine} from "../src/DifferentialRewardEngine.sol";
+import { Test } from "forge-std/Test.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { SponsorRegistry } from "../src/SponsorRegistry.sol";
+import { TierEngine } from "../src/TierEngine.sol";
+import { DifferentialRewardEngine } from "../src/DifferentialRewardEngine.sol";
 
 contract DifferentialRewardEngineTest is Test {
     address internal treasury = makeAddr("treasury");
@@ -45,7 +45,9 @@ contract DifferentialRewardEngineTest is Test {
         assertEq(usdt.balanceOf(lower), 0);
         assertEq(usdt.balanceOf(upper), 10 ether);
         assertEq(usdt.balanceOf(treasury), 90 ether);
-        vm.expectRevert(abi.encodeWithSelector(DifferentialRewardEngine.AlreadyProcessed.selector, 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(DifferentialRewardEngine.AlreadyProcessed.selector, 1)
+        );
         engine.distribute(1, user, 500 ether);
     }
 }

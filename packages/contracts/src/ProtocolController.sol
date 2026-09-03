@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ProductionConfigValidator} from "./ProductionConfigValidator.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { ProductionConfigValidator } from "./ProductionConfigValidator.sol";
 
 /// @notice Shared emergency circuit breaker and production-readiness gate.
 contract ProtocolController is AccessControl, Pausable {
@@ -20,7 +20,9 @@ contract ProtocolController is AccessControl, Pausable {
     event ProtocolResumed(address indexed governance);
 
     constructor(ProductionConfigValidator productionValidator_, address admin) {
-        if (address(productionValidator_) == address(0) || admin == address(0)) revert ZeroAddress();
+        if (address(productionValidator_) == address(0) || admin == address(0)) {
+            revert ZeroAddress();
+        }
         productionValidator = productionValidator_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GUARDIAN_ROLE, admin);

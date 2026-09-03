@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {ALPToken} from "../src/ALPToken.sol";
-import {GenesisReserve} from "../src/GenesisReserve.sol";
-import {GlobalComputeEngine} from "../src/GlobalComputeEngine.sol";
-import {EmissionEngine} from "../src/EmissionEngine.sol";
-import {MockPair} from "./mocks/MockPair.sol";
+import { Test } from "forge-std/Test.sol";
+import { ALPToken } from "../src/ALPToken.sol";
+import { GenesisReserve } from "../src/GenesisReserve.sol";
+import { GlobalComputeEngine } from "../src/GlobalComputeEngine.sol";
+import { EmissionEngine } from "../src/EmissionEngine.sol";
+import { MockPair } from "./mocks/MockPair.sol";
 
 contract EmissionEngineTest is Test {
     address internal reserve = makeAddr("reserve");
@@ -69,7 +69,8 @@ contract EmissionEngineTest is Test {
 
     function testCannotActivateBeforeAnyUserComputeExists() public {
         GlobalComputeEngine emptyCompute = new GlobalComputeEngine(alp, address(this));
-        EmissionEngine emptyEngine = new EmissionEngine(alp, emptyCompute, address(pair), 1 days, address(this));
+        EmissionEngine emptyEngine =
+            new EmissionEngine(alp, emptyCompute, address(pair), 1 days, address(this));
         emptyEngine.approveV1EmissionSchedule();
 
         vm.expectRevert(EmissionEngine.NoGlobalCompute.selector);

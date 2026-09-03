@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {IPriceOracleAdapter} from "./interfaces/IPriceOracleAdapter.sol";
-import {IPancakeV2Pair} from "./interfaces/IPancakeV2Pair.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IPriceOracleAdapter } from "./interfaces/IPriceOracleAdapter.sol";
+import { IPancakeV2Pair } from "./interfaces/IPancakeV2Pair.sol";
 
 /// @notice Permissionless Pancake V2 cumulative-price oracle with liquidity,
 /// observation-window, staleness, and reference-price-deviation protections.
@@ -49,12 +49,12 @@ contract PancakeV2TwapOracleAdapter is IPriceOracleAdapter {
         uint16 maxDeviationBps_
     ) {
         if (
-            address(pair_) == address(0) || address(asset_) == address(0) || address(quote_) == address(0)
-                || address(referenceOracle_) == address(0)
+            address(pair_) == address(0) || address(asset_) == address(0)
+                || address(quote_) == address(0) || address(referenceOracle_) == address(0)
         ) revert ZeroAddress();
         if (
-            minObservationWindow_ == 0 || maxStaleness_ < minObservationWindow_ || minReserve0_ == 0 || minReserve1_ == 0
-                || maxDeviationBps_ >= BPS_DENOMINATOR
+            minObservationWindow_ == 0 || maxStaleness_ < minObservationWindow_ || minReserve0_ == 0
+                || minReserve1_ == 0 || maxDeviationBps_ >= BPS_DENOMINATOR
         ) revert InvalidConfiguration();
         bool isToken0 = pair_.token0() == address(asset_) && pair_.token1() == address(quote_);
         bool isToken1 = pair_.token1() == address(asset_) && pair_.token0() == address(quote_);
@@ -72,8 +72,11 @@ contract PancakeV2TwapOracleAdapter is IPriceOracleAdapter {
     }
 
     function update() external returns (uint256 nextPriceE18) {
-        (uint256 cumulative, uint32 timestamp, uint112 reserve0, uint112 reserve1) = _currentCumulativePrice();
-        if (reserve0 < minReserve0 || reserve1 < minReserve1) revert InsufficientLiquidity(reserve0, reserve1);
+        (uint256 cumulative, uint32 timestamp, uint112 reserve0, uint112 reserve1) =
+            _currentCumulativePrice();
+        if (reserve0 < minReserve0 || reserve1 < minReserve1) {
+            revert InsufficientLiquidity(reserve0, reserve1);
+        }
         if (observationTimestamp == 0) {
             observationCumulative = cumulative;
             observationTimestamp = timestamp;
@@ -81,12 +84,16 @@ contract PancakeV2TwapOracleAdapter is IPriceOracleAdapter {
             return 0;
         }
         uint32 elapsed = timestamp - observationTimestamp;
-        if (elapsed < minObservationWindow) revert ObservationWindowNotElapsed(elapsed, minObservationWindow);
+        if (elapsed < minObservationWindow) {
+            revert ObservationWindowNotElapsed(elapsed, minObservationWindow);
+        }
         uint256 averagePriceX112 = (cumulative - observationCumulative) / elapsed;
         uint256 quoteAmount = averagePriceX112 * (10 ** asset.decimals()) / Q112;
         nextPriceE18 = quoteAmount * _referencePrice(address(quote)) / (10 ** quote.decimals());
         uint256 referencePrice = _referencePrice(address(asset));
-        uint256 deviation = nextPriceE18 > referencePrice ? nextPriceE18 - referencePrice : referencePrice - nextPriceE18;
+        uint256 deviation = nextPriceE18 > referencePrice
+            ? nextPriceE18 - referencePrice
+            : referencePrice - nextPriceE18;
         if (deviation * BPS_DENOMINATOR > referencePrice * maxDeviationBps) {
             revert TwapPriceDeviation(nextPriceE18, referencePrice);
         }
@@ -103,7 +110,8 @@ contract PancakeV2TwapOracleAdapter is IPriceOracleAdapter {
     }
 
     function isPriceValid(address token) external view returns (bool) {
-        return token == address(asset) && priceE18 != 0 && updatedAt != 0 && block.timestamp - updatedAt <= maxStaleness;
+        return token == address(asset) && priceE18 != 0 && updatedAt != 0
+            && block.timestamp - updatedAt <= maxStaleness;
     }
 
     function _referencePrice(address token) private view returns (uint256 value) {
@@ -112,14 +120,20 @@ contract PancakeV2TwapOracleAdapter is IPriceOracleAdapter {
         if (value == 0) revert UnsupportedToken(token);
     }
 
-    function _currentCumulativePrice() private view returns (uint256 cumulative, uint32 timestamp, uint112 reserve0, uint112 reserve1) {
+    function _currentCumulativePrice()
+        private
+        view
+        returns (uint256 cumulative, uint32 timestamp, uint112 reserve0, uint112 reserve1)
+    {
         uint32 pairTimestamp;
         (reserve0, reserve1, pairTimestamp) = pair.getReserves();
         timestamp = uint32(block.timestamp);
         cumulative = assetIsToken0 ? pair.price0CumulativeLast() : pair.price1CumulativeLast();
         if (pairTimestamp != timestamp && reserve0 != 0 && reserve1 != 0) {
             uint32 elapsed = timestamp - pairTimestamp;
-            uint256 currentPriceX112 = assetIsToken0 ? uint256(reserve1) * Q112 / reserve0 : uint256(reserve0) * Q112 / reserve1;
+            uint256 currentPriceX112 = assetIsToken0
+                ? uint256(reserve1) * Q112 / reserve0
+                : uint256(reserve0) * Q112 / reserve1;
             cumulative += currentPriceX112 * elapsed;
         }
     }

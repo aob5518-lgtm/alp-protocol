@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {SponsorRegistry} from "./SponsorRegistry.sol";
-import {TierEngine} from "./TierEngine.sol";
-import {IDifferentialRewardEngine} from "./interfaces/IDifferentialRewardEngine.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { SponsorRegistry } from "./SponsorRegistry.sol";
+import { TierEngine } from "./TierEngine.sol";
+import { IDifferentialRewardEngine } from "./interfaces/IDifferentialRewardEngine.sol";
 
 /// @notice Pays the non-overlapping tier-rate delta along a referral path from the reward treasury.
 contract DifferentialRewardEngine is AccessControl, ReentrancyGuard, IDifferentialRewardEngine {
@@ -37,12 +37,21 @@ contract DifferentialRewardEngine is AccessControl, ReentrancyGuard, IDifferenti
         uint16 differentialBps,
         uint256 amount
     );
-    event DifferentialDistributionCompleted(uint256 indexed positionId, uint16 highestTierRateBps, uint256 totalPaid);
+    event DifferentialDistributionCompleted(
+        uint256 indexed positionId, uint16 highestTierRateBps, uint256 totalPaid
+    );
 
-    constructor(IERC20 rewardToken_, address rewardTreasury_, SponsorRegistry sponsorRegistry_, TierEngine tierEngine_, address admin) {
+    constructor(
+        IERC20 rewardToken_,
+        address rewardTreasury_,
+        SponsorRegistry sponsorRegistry_,
+        TierEngine tierEngine_,
+        address admin
+    ) {
         if (
-            address(rewardToken_) == address(0) || rewardTreasury_ == address(0) || address(sponsorRegistry_) == address(0)
-                || address(tierEngine_) == address(0) || admin == address(0)
+            address(rewardToken_) == address(0) || rewardTreasury_ == address(0)
+                || address(sponsorRegistry_) == address(0) || address(tierEngine_) == address(0)
+                || admin == address(0)
         ) revert ZeroAddress();
         rewardToken = rewardToken_;
         rewardTreasury = rewardTreasury_;
@@ -75,13 +84,16 @@ contract DifferentialRewardEngine is AccessControl, ReentrancyGuard, IDifferenti
             // Never compare only against the immediate lower sponsor. The paid-rate watermark
             // makes rates monotonic along the complete sponsor path, so the aggregate payout
             // is bounded by the highest reached tier rate.
-            uint16 differentialBps = upperRate > highestPaidRateBps ? upperRate - highestPaidRateBps : 0;
+            uint16 differentialBps =
+                upperRate > highestPaidRateBps ? upperRate - highestPaidRateBps : 0;
             if (differentialBps != 0) {
                 uint256 amount = rewardBase * differentialBps / BPS_DENOMINATOR;
                 if (amount != 0) rewardToken.safeTransferFrom(rewardTreasury, upper, amount);
                 totalPaid += amount;
                 highestPaidRateBps = upperRate;
-                emit DifferentialRewardPaid(positionId, upper, level, upperTier, lowerTier, differentialBps, amount);
+                emit DifferentialRewardPaid(
+                    positionId, upper, level, upperTier, lowerTier, differentialBps, amount
+                );
             }
             lower = upper;
             upper = sponsorRegistry.sponsorOf(upper);

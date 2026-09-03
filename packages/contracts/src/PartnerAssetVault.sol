@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IPartnerAssetVault} from "./interfaces/IPartnerAssetVault.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IPartnerAssetVault } from "./interfaces/IPartnerAssetVault.sol";
 
 /// @notice Per-asset custody endpoint. Its configured policy is sealed after its first contribution.
 contract PartnerAssetVault is Ownable2Step, AccessControl, IPartnerAssetVault {
@@ -17,7 +17,13 @@ contract PartnerAssetVault is Ownable2Step, AccessControl, IPartnerAssetVault {
     error StrategySealed();
     error InvalidStrategy();
 
-    enum Strategy { LOCK, BURN, LIQUIDITY, TREASURY, REDEEM }
+    enum Strategy {
+        LOCK,
+        BURN,
+        LIQUIDITY,
+        TREASURY,
+        REDEEM
+    }
 
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
@@ -32,7 +38,11 @@ contract PartnerAssetVault is Ownable2Step, AccessControl, IPartnerAssetVault {
     event PoolAuthorizationUpdated(address indexed pool, bool allowed);
     event StrategyConfigured(Strategy strategy, address indexed recipient);
     event PartnerAssetDeposited(
-        uint256 indexed assetId, uint256 indexed positionId, address indexed user, uint256 amount, Strategy strategy
+        uint256 indexed assetId,
+        uint256 indexed positionId,
+        address indexed user,
+        uint256 amount,
+        Strategy strategy
     );
 
     constructor(address initialOwner, IERC20 asset_, Strategy strategy_, address strategyRecipient_)

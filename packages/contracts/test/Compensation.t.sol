@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {LinearDailyCompensationStrategy} from "../src/strategies/LinearDailyCompensationStrategy.sol";
-import {CompoundDailyCompensationStrategy} from "../src/strategies/CompoundDailyCompensationStrategy.sol";
+import { Test } from "forge-std/Test.sol";
+import {
+    LinearDailyCompensationStrategy
+} from "../src/strategies/LinearDailyCompensationStrategy.sol";
+import {
+    CompoundDailyCompensationStrategy
+} from "../src/strategies/CompoundDailyCompensationStrategy.sol";
 
 contract CompensationTest is Test {
     function testLinearMatchesSpecifiedFactors() public {

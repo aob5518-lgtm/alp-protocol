@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IPriceOracleAdapter} from "./interfaces/IPriceOracleAdapter.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IPriceOracleAdapter } from "./interfaces/IPriceOracleAdapter.sol";
 
 /// @notice Canonical asset-price entry point. Each asset is pinned to one reviewed
 /// Chainlink or Pancake V2 TWAP adapter; callers never need to infer the source type.
@@ -12,7 +12,10 @@ contract OracleRouter is AccessControl, IPriceOracleAdapter {
     error SourceNotConfigured(address token);
     error InvalidSourceKind();
 
-    enum SourceKind { CHAINLINK, PANCAKE_V2_TWAP }
+    enum SourceKind {
+        CHAINLINK,
+        PANCAKE_V2_TWAP
+    }
 
     struct SourceConfig {
         IPriceOracleAdapter source;
@@ -35,7 +38,7 @@ contract OracleRouter is AccessControl, IPriceOracleAdapter {
         if (token == address(0) || address(source) == address(0)) revert ZeroAddress();
         if (address(source).code.length == 0) revert SourceMustBeContract(address(source));
         if (uint8(kind) > uint8(SourceKind.PANCAKE_V2_TWAP)) revert InvalidSourceKind();
-        _sources[token] = SourceConfig({source: source, kind: kind});
+        _sources[token] = SourceConfig({ source: source, kind: kind });
         emit SourceConfigured(token, address(source), kind);
     }
 

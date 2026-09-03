@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {ProductionConfigValidator} from "../src/ProductionConfigValidator.sol";
+import { Test } from "forge-std/Test.sol";
+import { ProductionConfigValidator } from "../src/ProductionConfigValidator.sol";
 
-contract ConfigTarget {}
+contract ConfigTarget { }
 
 contract ProductionConfigValidatorTest is Test {
     ProductionConfigValidator internal validator;
@@ -22,12 +22,25 @@ contract ProductionConfigValidatorTest is Test {
         ConfigTarget target = new ConfigTarget();
         validator.configure(
             ProductionConfigValidator.Configuration({
-                oracle: address(target), mainPair: address(target), treasurySafe: address(target), timelock: address(target),
-                compensationStrategy: address(target), nodeDividendFundingSource: address(target), rewardSplitConfigured: true,
-                liquidityALPSourceConfigured: true, tierVolumeBaseApproved: true, tierSnapshotSystemConfigured: true,
-                emissionScheduleApproved: true, protocolModulesSealed: true, protocolExemptionsSealed: true,
-                oracleConfigured: true, mainPairConfigured: true, treasurySafeConfigured: true, timelockConfigured: true,
-                externalAuditApproved: true, auditApprovalHash: keccak256("audit")
+                oracle: address(target),
+                mainPair: address(target),
+                treasurySafe: address(target),
+                timelock: address(target),
+                compensationStrategy: address(target),
+                nodeDividendFundingSource: address(target),
+                rewardSplitConfigured: true,
+                liquidityALPSourceConfigured: true,
+                tierVolumeBaseApproved: true,
+                tierSnapshotSystemConfigured: true,
+                emissionScheduleApproved: true,
+                protocolModulesSealed: true,
+                protocolExemptionsSealed: true,
+                oracleConfigured: true,
+                mainPairConfigured: true,
+                treasurySafeConfigured: true,
+                timelockConfigured: true,
+                externalAuditApproved: true,
+                auditApprovalHash: keccak256("audit")
             })
         );
         assertTrue(validator.readyForProduction());
@@ -36,14 +49,29 @@ contract ProductionConfigValidatorTest is Test {
     }
 
     function testEOAAddressesCanNeverEnableProduction() public {
-        validator.configure(ProductionConfigValidator.Configuration({
-            oracle: makeAddr("oracle"), mainPair: makeAddr("pair"), treasurySafe: makeAddr("safe"), timelock: makeAddr("timelock"),
-            compensationStrategy: makeAddr("linear"), nodeDividendFundingSource: makeAddr("nodeFunding"), rewardSplitConfigured: true,
-            liquidityALPSourceConfigured: true, tierVolumeBaseApproved: true, tierSnapshotSystemConfigured: true,
-            emissionScheduleApproved: true, protocolModulesSealed: true, protocolExemptionsSealed: true,
-            oracleConfigured: true, mainPairConfigured: true, treasurySafeConfigured: true, timelockConfigured: true,
-            externalAuditApproved: true, auditApprovalHash: keccak256("audit")
-        }));
+        validator.configure(
+            ProductionConfigValidator.Configuration({
+                oracle: makeAddr("oracle"),
+                mainPair: makeAddr("pair"),
+                treasurySafe: makeAddr("safe"),
+                timelock: makeAddr("timelock"),
+                compensationStrategy: makeAddr("linear"),
+                nodeDividendFundingSource: makeAddr("nodeFunding"),
+                rewardSplitConfigured: true,
+                liquidityALPSourceConfigured: true,
+                tierVolumeBaseApproved: true,
+                tierSnapshotSystemConfigured: true,
+                emissionScheduleApproved: true,
+                protocolModulesSealed: true,
+                protocolExemptionsSealed: true,
+                oracleConfigured: true,
+                mainPairConfigured: true,
+                treasurySafeConfigured: true,
+                timelockConfigured: true,
+                externalAuditApproved: true,
+                auditApprovalHash: keccak256("audit")
+            })
+        );
         assertFalse(validator.readyForProduction());
     }
 }

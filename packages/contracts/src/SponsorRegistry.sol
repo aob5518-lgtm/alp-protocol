@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @notice Permanent sponsor graph plus activation accounting for direct referrals.
 contract SponsorRegistry is AccessControl {
@@ -20,7 +20,9 @@ contract SponsorRegistry is AccessControl {
     mapping(address => uint256) public activeDirectReferralCount;
 
     event SponsorBound(address indexed user, address indexed sponsor);
-    event ContributorActivated(address indexed user, address indexed sponsor, uint256 activeDirectCount);
+    event ContributorActivated(
+        address indexed user, address indexed sponsor, uint256 activeDirectCount
+    );
 
     constructor(address admin) {
         if (admin == address(0)) revert ZeroAddress();

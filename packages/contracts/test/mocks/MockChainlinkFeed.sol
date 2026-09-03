@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IAggregatorV3} from "../../src/interfaces/IAggregatorV3.sol";
+import { IAggregatorV3 } from "../../src/interfaces/IAggregatorV3.sol";
 
 contract MockChainlinkFeed is IAggregatorV3 {
     uint8 public immutable decimals;
@@ -14,7 +14,9 @@ contract MockChainlinkFeed is IAggregatorV3 {
         decimals = decimals_;
     }
 
-    function setRound(uint80 roundId_, int256 answer_, uint256 updatedAt_, uint80 answeredInRound_) external {
+    function setRound(uint80 roundId_, int256 answer_, uint256 updatedAt_, uint80 answeredInRound_)
+        external
+    {
         roundId = roundId_;
         answer = answer_;
         updatedAt = updatedAt_;

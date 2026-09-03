@@ -1,24 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
-import {MockOracleAdapter} from "./mocks/MockOracleAdapter.sol";
-import {AssetRegistry} from "../src/AssetRegistry.sol";
-import {PartnerAssetVault} from "../src/PartnerAssetVault.sol";
-import {GlobalComputeEngine} from "../src/GlobalComputeEngine.sol";
-import {SponsorRegistry} from "../src/SponsorRegistry.sol";
-import {ReferralRewardEngine} from "../src/ReferralRewardEngine.sol";
-import {LaunchPoolFactory} from "../src/LaunchPoolFactory.sol";
-import {LaunchPool} from "../src/LaunchPool.sol";
-import {LinearDailyCompensationStrategy} from "../src/strategies/LinearDailyCompensationStrategy.sol";
-import {TierEngine} from "../src/TierEngine.sol";
-import {DifferentialRewardEngine} from "../src/DifferentialRewardEngine.sol";
-import {ILiquidityManager} from "../src/interfaces/ILiquidityManager.sol";
-import {MockLiquidityManager} from "./mocks/MockLiquidityManager.sol";
-import {ProductionConfigValidator} from "../src/ProductionConfigValidator.sol";
-import {ProtocolController} from "../src/ProtocolController.sol";
-import {IProtocolController} from "../src/interfaces/IProtocolController.sol";
+import { Test } from "forge-std/Test.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { MockOracleAdapter } from "./mocks/MockOracleAdapter.sol";
+import { AssetRegistry } from "../src/AssetRegistry.sol";
+import { PartnerAssetVault } from "../src/PartnerAssetVault.sol";
+import { GlobalComputeEngine } from "../src/GlobalComputeEngine.sol";
+import { SponsorRegistry } from "../src/SponsorRegistry.sol";
+import { ReferralRewardEngine } from "../src/ReferralRewardEngine.sol";
+import { LaunchPoolFactory } from "../src/LaunchPoolFactory.sol";
+import { LaunchPool } from "../src/LaunchPool.sol";
+import {
+    LinearDailyCompensationStrategy
+} from "../src/strategies/LinearDailyCompensationStrategy.sol";
+import { TierEngine } from "../src/TierEngine.sol";
+import { DifferentialRewardEngine } from "../src/DifferentialRewardEngine.sol";
+import { ILiquidityManager } from "../src/interfaces/ILiquidityManager.sol";
+import { MockLiquidityManager } from "./mocks/MockLiquidityManager.sol";
+import { ProductionConfigValidator } from "../src/ProductionConfigValidator.sol";
+import { ProtocolController } from "../src/ProtocolController.sol";
+import { IProtocolController } from "../src/interfaces/IProtocolController.sol";
 
 contract LaunchPoolFactoryTest is Test {
     address internal treasury = makeAddr("rewardTreasury");
@@ -47,7 +49,8 @@ contract LaunchPoolFactoryTest is Test {
         alp = new MockERC20("ALP", "ALP", 18);
         oracle = new MockOracleAdapter();
         oracle.setPrice(2 ether, block.timestamp, true);
-        vault = new PartnerAssetVault(address(this), card, PartnerAssetVault.Strategy.LOCK, address(0));
+        vault =
+            new PartnerAssetVault(address(this), card, PartnerAssetVault.Strategy.LOCK, address(0));
         registry = new AssetRegistry(address(this));
         compute = new GlobalComputeEngine(alp, address(this));
         sponsors = new SponsorRegistry(address(this));
@@ -58,7 +61,15 @@ contract LaunchPoolFactoryTest is Test {
         validator = new ProductionConfigValidator(address(this));
         controller = new ProtocolController(validator, address(this));
         factory = new LaunchPoolFactory(
-            address(this), registry, usdt, compute, sponsors, referral, tiers, differential, IProtocolController(address(controller))
+            address(this),
+            registry,
+            usdt,
+            compute,
+            sponsors,
+            referral,
+            tiers,
+            differential,
+            IProtocolController(address(controller))
         );
         registry.configurePoolFactory(address(factory));
 
@@ -140,7 +151,9 @@ contract LaunchPoolFactoryTest is Test {
 
         AssetRegistry.AssetConfig memory invalidConfig = registry.asset(1);
         invalidConfig.symbol = "NEW";
-        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.ImmutableAssetFieldsSealed.selector, 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(AssetRegistry.ImmutableAssetFieldsSealed.selector, 1)
+        );
         registry.updateAsset(1, invalidConfig);
     }
 

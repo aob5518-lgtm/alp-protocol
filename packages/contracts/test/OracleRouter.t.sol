@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {MockOracleAdapter} from "./mocks/MockOracleAdapter.sol";
-import {OracleRouter} from "../src/OracleRouter.sol";
-import {IPriceOracleAdapter} from "../src/interfaces/IPriceOracleAdapter.sol";
+import { Test } from "forge-std/Test.sol";
+import { MockOracleAdapter } from "./mocks/MockOracleAdapter.sol";
+import { OracleRouter } from "../src/OracleRouter.sol";
+import { IPriceOracleAdapter } from "../src/interfaces/IPriceOracleAdapter.sol";
 
 contract OracleRouterTest is Test {
     OracleRouter internal router;
@@ -21,7 +21,9 @@ contract OracleRouterTest is Test {
     }
 
     function testRoutesConfiguredSourcesAndCanSwitchSourceKindByGovernance() public {
-        router.configureSource(asset, IPriceOracleAdapter(address(chainlinkSource)), OracleRouter.SourceKind.CHAINLINK);
+        router.configureSource(
+            asset, IPriceOracleAdapter(address(chainlinkSource)), OracleRouter.SourceKind.CHAINLINK
+        );
         (uint256 price, uint256 updatedAt) = router.getPrice(asset);
         assertEq(price, 3 ether);
         assertEq(updatedAt, block.timestamp);
@@ -29,7 +31,9 @@ contract OracleRouterTest is Test {
         assertEq(source, address(chainlinkSource));
         assertEq(uint8(kind), uint8(OracleRouter.SourceKind.CHAINLINK));
 
-        router.configureSource(asset, IPriceOracleAdapter(address(twapSource)), OracleRouter.SourceKind.PANCAKE_V2_TWAP);
+        router.configureSource(
+            asset, IPriceOracleAdapter(address(twapSource)), OracleRouter.SourceKind.PANCAKE_V2_TWAP
+        );
         (price,) = router.getPrice(asset);
         assertEq(price, 4 ether);
         assertTrue(router.isPriceValid(asset));
