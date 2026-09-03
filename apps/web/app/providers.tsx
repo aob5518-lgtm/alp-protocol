@@ -13,6 +13,14 @@ export default function Providers({children}: {children: ReactNode}) {
   const [error, setError] = useState<string>();
   const messages = locale === "zh-CN" ? zh : en;
   useEffect(() => {
+    const stored = window.localStorage.getItem("alp.locale");
+    if (stored === "en-US" || stored === "zh-CN") setLocale(stored);
+  }, []);
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    window.localStorage.setItem("alp.locale", locale);
+  }, [locale]);
+  useEffect(() => {
     const provider = window.ethereum;
     if (!provider) return;
     provider.request({method: "eth_accounts"}).then((result) => setAddress((result as string[])[0])).catch(() => undefined);
