@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import { Test } from "forge-std/Test.sol";
 import { SponsorRegistry } from "../src/SponsorRegistry.sol";
 import { TierEngine } from "../src/TierEngine.sol";
+import { TierSnapshotRegistry } from "../src/TierSnapshotRegistry.sol";
 
 contract TierEngineTest is Test {
     SponsorRegistry internal sponsors;
@@ -41,5 +42,15 @@ contract TierEngineTest is Test {
         totalValueTiers.grantRole(totalValueTiers.POOL_ROLE(), address(this));
         totalValueTiers.recordPosition(branchA, 500 ether, 1_000 ether);
         assertEq(totalValueTiers.totalNetworkVolume(root), 1_000 ether);
+    }
+
+    function testSnapshotAuthorityDisablesLegacyTwentyHopAccumulator() public {
+        TierSnapshotRegistry snapshots = new TierSnapshotRegistry(0, address(this));
+        tiers.configureSnapshotRegistry(snapshots);
+
+        tiers.recordPosition(branchA, 500 ether, 1_000 ether);
+
+        assertEq(tiers.totalNetworkVolume(root), 0);
+        assertEq(tiers.largestDirectBranchVolume(root), 0);
     }
 }

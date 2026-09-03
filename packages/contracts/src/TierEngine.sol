@@ -34,6 +34,7 @@ contract TierEngine is AccessControl, ITierEngine {
     mapping(address => mapping(address => uint256)) public directBranchVolume;
 
     event NetworkVolumeRecorded(address indexed user, uint256 volume, uint8 traversedLevels);
+    event SnapshotAuthorityUsed(address indexed user, uint256 totalPositionValue);
     event TierUpdated(
         address indexed user,
         uint8 previousTier,
@@ -69,6 +70,14 @@ contract TierEngine is AccessControl, ITierEngine {
         override
         onlyRole(POOL_ROLE)
     {
+        // V1 production tiers are computed off-chain over the full sponsor graph
+        // and committed through TierSnapshotRegistry. Retaining this legacy
+        // 20-hop accumulator after that authority is configured would create a
+        // second, incomplete source of truth while also risking Position reverts.
+        if (address(snapshotRegistry) != address(0)) {
+            emit SnapshotAuthorityUsed(user, totalPositionValue);
+            return;
+        }
         uint256 volume =
             volumeBase == VolumeBase.USDT_CONTRIBUTION ? usdtContribution : totalPositionValue;
         if (volume == 0) revert InvalidVolume();
