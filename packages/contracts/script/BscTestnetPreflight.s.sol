@@ -20,16 +20,12 @@ contract BscTestnetPreflight is Script {
         _requireCode("USDT_ADDRESS", vm.envAddress("USDT_ADDRESS"));
         _requireCode("PANCAKE_V2_ROUTER", vm.envAddress("PANCAKE_V2_ROUTER"));
         _requireCode("PANCAKE_V2_FACTORY", vm.envAddress("PANCAKE_V2_FACTORY"));
-        _requireAddress("SAFE_ADDRESS", vm.envAddress("SAFE_ADDRESS"));
-        _requireAddress("TIMELOCK_ADDRESS", vm.envAddress("TIMELOCK_ADDRESS"));
+        _requireCode("SAFE_ADDRESS", vm.envAddress("SAFE_ADDRESS"));
+        _requireCode("TIMELOCK_ADDRESS", vm.envAddress("TIMELOCK_ADDRESS"));
     }
 
     function _requireCode(string memory name, address candidate) private view {
         if (candidate == address(0)) revert ZeroAddress(name);
         if (candidate.code.length == 0) revert MissingContractCode(name, candidate);
-    }
-
-    function _requireAddress(string memory name, address candidate) private pure {
-        if (candidate == address(0)) revert ZeroAddress(name);
     }
 }
