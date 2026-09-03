@@ -19,7 +19,6 @@ contract EmissionEngine is Ownable2Step {
     error EmissionNotActivated();
     error NoGlobalCompute();
     error EmissionScheduleNotApproved();
-    error ProtocolControllerAlreadyConfigured();
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant INITIAL_OUTPUT_BPS = 60;
@@ -36,7 +35,7 @@ contract EmissionEngine is Ownable2Step {
     uint64 public emissionStartTime;
     bool public emissionActivated;
     bool public emissionScheduleApproved;
-    IProtocolController public protocolController;
+    IProtocolController public immutable protocolController;
     uint256 public epochId;
 
     struct Epoch {
@@ -66,22 +65,24 @@ contract EmissionEngine is Ownable2Step {
         uint64 indexed emissionStartTime, uint64 firstEpochTime, address indexed caller
     );
     event EmissionScheduleApproved(bytes32 indexed scheduleHash, address indexed governance);
-    event ProtocolControllerConfigured(address indexed controller);
 
     constructor(
         ALPToken alp_,
         GlobalComputeEngine computeEngine_,
         address mainPair_,
         uint64 firstEpochTime_,
+        IProtocolController protocolController_,
         address initialOwner
     ) Ownable(initialOwner) {
         if (
             address(alp_) == address(0) || address(computeEngine_) == address(0)
-                || mainPair_ == address(0) || initialOwner == address(0)
+                || mainPair_ == address(0) || address(protocolController_) == address(0)
+                || initialOwner == address(0)
         ) revert ZeroAddress();
         alp = alp_;
         computeEngine = computeEngine_;
         mainPair = mainPair_;
+        protocolController = protocolController_;
         firstEpochTime = firstEpochTime_;
         nextEpochTime = firstEpochTime_;
     }
@@ -92,15 +93,6 @@ contract EmissionEngine is Ownable2Step {
             emissionScheduleApproved = true;
             emit EmissionScheduleApproved(V1_SCHEDULE_HASH, msg.sender);
         }
-    }
-
-    function configureProtocolController(IProtocolController controller) external onlyOwner {
-        if (address(controller) == address(0)) revert ZeroAddress();
-        if (address(protocolController) != address(0)) {
-            revert ProtocolControllerAlreadyConfigured();
-        }
-        protocolController = controller;
-        emit ProtocolControllerConfigured(address(controller));
     }
 
     /// @notice The first epoch cannot start until actual user compute and governance schedule approval exist.
@@ -123,7 +115,7 @@ contract EmissionEngine is Ownable2Step {
     }
 
     function settleEpoch() external returns (uint256 settledEpochId) {
-        if (address(protocolController) != address(0)) protocolController.requireOperational();
+        protocolController.requireOperational();
         if (!emissionActivated) revert EmissionNotActivated();
         if (block.timestamp < nextEpochTime) revert EpochNotReady(nextEpochTime, block.timestamp);
         settledEpochId = ++epochId;

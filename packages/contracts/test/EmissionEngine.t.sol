@@ -7,6 +7,20 @@ import { GenesisReserve } from "../src/GenesisReserve.sol";
 import { GlobalComputeEngine } from "../src/GlobalComputeEngine.sol";
 import { EmissionEngine } from "../src/EmissionEngine.sol";
 import { MockPair } from "./mocks/MockPair.sol";
+import { IProtocolController } from "../src/interfaces/IProtocolController.sol";
+
+contract MockProtocolController is IProtocolController {
+    bool public paused;
+
+    function setPaused(bool value) external {
+        paused = value;
+    }
+
+    function requireOperational() external view {
+        require(!paused, "paused");
+    }
+    function requireProductionReady() external pure { }
+}
 
 contract EmissionEngineTest is Test {
     address internal reserve = makeAddr("reserve");
@@ -16,6 +30,7 @@ contract EmissionEngineTest is Test {
     EmissionEngine internal engine;
     MockPair internal pair;
     GenesisReserve internal genesisReserve;
+    MockProtocolController internal controller;
 
     function setUp() public {
         pair = new MockPair();
@@ -34,7 +49,8 @@ contract EmissionEngineTest is Test {
         alp.configureMainPair(address(pair));
         alp.setSellFeeExempt(reserve, true);
         compute = new GlobalComputeEngine(alp, address(this));
-        engine = new EmissionEngine(alp, compute, address(pair), 1 days, address(this));
+        controller = new MockProtocolController();
+        engine = new EmissionEngine(alp, compute, address(pair), 1 days, controller, address(this));
         alp.configureEmissionEngine(address(engine));
         compute.grantRole(compute.EMISSION_ROLE(), address(engine));
         compute.grantRole(compute.POOL_ROLE(), address(this));
@@ -70,7 +86,7 @@ contract EmissionEngineTest is Test {
     function testCannotActivateBeforeAnyUserComputeExists() public {
         GlobalComputeEngine emptyCompute = new GlobalComputeEngine(alp, address(this));
         EmissionEngine emptyEngine =
-            new EmissionEngine(alp, emptyCompute, address(pair), 1 days, address(this));
+            new EmissionEngine(alp, emptyCompute, address(pair), 1 days, controller, address(this));
         emptyEngine.approveV1EmissionSchedule();
 
         vm.expectRevert(EmissionEngine.NoGlobalCompute.selector);
@@ -99,5 +115,17 @@ contract EmissionEngineTest is Test {
         assertEq(deferredCompute.undistributedEmission(), 0);
         assertEq(deferredCompute.totalEmitted(), 66 ether);
         assertEq(deferredCompute.pending(999), 66 ether);
+    }
+
+    function testEmergencyPauseAlwaysBlocksSettlement() public {
+        vm.warp(1 days);
+        engine.approveV1EmissionSchedule();
+        engine.activateEmission();
+        controller.setPaused(true);
+        vm.expectRevert(bytes("paused"));
+        engine.settleEpoch();
+        controller.setPaused(false);
+        engine.settleEpoch();
+        assertEq(engine.epochId(), 1);
     }
 }
