@@ -1,22 +1,26 @@
 import {readFile} from "node:fs/promises";
 import {Pool} from "pg";
-import {createPublicClient, http} from "viem";
+import {createPublicClient, decodeEventLog, http, parseAbiItem, type Address, type Log} from "viem";
 import {bscTestnet} from "viem/chains";
 
-const db = new Pool({connectionString:process.env.DATABASE_URL});
-const rpc = process.env.RPC_URL;
-if (!rpc) throw new Error("RPC_URL is required");
-const client = createPublicClient({chain:bscTestnet, transport:http(rpc)});
-const addressBookPath = process.env.ADDRESS_BOOK_PATH ?? "../../deployments/bsc-testnet.json";
-
-async function tick() {
-  const addressBook = JSON.parse(await readFile(addressBookPath, "utf8"));
-  if (addressBook.status !== "deployed") return console.log("Indexer waiting for a verified deployed address book.");
-  const block = await client.getBlock({blockTag:"latest"});
-  await db.query("insert into chain_blocks(chain_id,number,hash,parent_hash) values($1,$2,$3,$4) on conflict do nothing", [97, Number(block.number), block.hash, block.parentHash]);
-  // Event ABI registration is intentionally address-book driven. Add only verified deployed contracts here;
-  // projections are idempotent by (chainId, txHash, logIndex) and must roll back from the first divergent block.
-  console.log(`Indexed checkpoint ${block.number} for ${Object.keys(addressBook.contracts).length} configured contracts`);
+const chainId = 97, db = new Pool({connectionString:process.env.DATABASE_URL});
+const rpc = process.env.RPC_URL; if (!rpc) throw new Error("RPC_URL is required");
+const client = createPublicClient({chain:bscTestnet, transport:http(rpc)}), addressBookPath = process.env.ADDRESS_BOOK_PATH ?? "../../deployments/bsc-testnet.json";
+const sponsorBound = parseAbiItem("event SponsorBound(address indexed user, address indexed sponsor)");
+const positionCreated = parseAbiItem("event PositionCreated(uint256 indexed positionId, uint256 indexed globalPositionId, address indexed user, uint256 partnerTokenAmount, uint256 usdtAmount, uint256 totalValueUSDT, uint256 effectiveCompute, uint256 timeCompensationFactor)");
+const epochSettled = parseAbiItem("event EpochSettled(uint256 indexed epochId, uint64 timestamp, uint256 reserveBefore, uint256 burnAmount, uint256 emissionAmount, uint256 reserveAfter, uint16 outputRateBps, uint16 burnRateBps, address indexed caller)");
+const clean = (value:unknown) => JSON.parse(JSON.stringify(value, (_, item) => typeof item === "bigint" ? item.toString() : item));
+async function event(log:Log, name:string, payload:unknown) { await db.query("insert into indexed_events(chain_id,tx_hash,log_index,block_number,block_hash,contract_address,event_name,payload) values($1,$2,$3,$4,$5,$6,$7,$8) on conflict do nothing", [chainId,log.transactionHash,Number(log.logIndex),Number(log.blockNumber),log.blockHash,log.address,name,clean(payload)]); }
+async function project(log:Log) {
+  try { const d=decodeEventLog({abi:[sponsorBound],data:log.data,topics:log.topics}); const a=d.args as {user:Address;sponsor:Address}; await event(log,"SponsorBound",a); return db.query("insert into sponsor_edges(wallet_address,sponsor_address,bound_block,tx_hash) values($1,$2,$3,$4) on conflict (wallet_address) do nothing",[a.user.toLowerCase(),a.sponsor.toLowerCase(),Number(log.blockNumber),log.transactionHash]); } catch {}
+  try { const d=decodeEventLog({abi:[positionCreated],data:log.data,topics:log.topics}); const a=d.args as {globalPositionId:bigint;user:Address;partnerTokenAmount:bigint;usdtAmount:bigint;totalValueUSDT:bigint;effectiveCompute:bigint}; await event(log,"PositionCreated",a); return db.query("insert into positions(global_position_id,pool_address,wallet_address,partner_amount,usdt_amount,total_value,effective_compute,status,created_block,created_at) values($1,$2,$3,$4,$5,$6,$7,'ACTIVE',$8,now()) on conflict do nothing",[a.globalPositionId.toString(),log.address.toLowerCase(),a.user.toLowerCase(),a.partnerTokenAmount.toString(),a.usdtAmount.toString(),a.totalValueUSDT.toString(),a.effectiveCompute.toString(),Number(log.blockNumber)]); } catch {}
+  try { const d=decodeEventLog({abi:[epochSettled],data:log.data,topics:log.topics}); const a=d.args as {epochId:bigint;reserveBefore:bigint;burnAmount:bigint;emissionAmount:bigint;outputRateBps:number}; await event(log,"EpochSettled",a); return db.query("insert into epochs(epoch_id,reserve_before,burn_amount,emission_amount,output_rate_bps,settled_block,settled_at) values($1,$2,$3,$4,$5,$6,now()) on conflict do nothing",[a.epochId.toString(),a.reserveBefore.toString(),a.burnAmount.toString(),a.emissionAmount.toString(),a.outputRateBps,Number(log.blockNumber)]); } catch {}
 }
-tick().catch(error => { console.error(error); process.exitCode = 1; });
-setInterval(() => void tick().catch(console.error), 12_000);
+async function rewind(block:bigint,parent:string) { const prior=await db.query("select hash from chain_blocks where chain_id=$1 and number=$2",[chainId,Number(block-1n)]); if(!prior.rowCount || prior.rows[0].hash===parent)return; const from=Number(block-1n); const columns:Record<string,string>={indexed_events:"block_number",chain_blocks:"number",sponsor_edges:"bound_block",positions:"created_block",epochs:"settled_block"}; await db.query("begin"); try { for(const table of Object.keys(columns)) await db.query(`delete from ${table} where ${columns[table]} >= $1`,[from]); await db.query("commit"); } catch(error){await db.query("rollback");throw error;} }
+async function tick() {
+  const book=JSON.parse(await readFile(addressBookPath,"utf8")) as {status:string;contracts:Record<string,string|null>}; if(book.status!=="deployed")return console.log("Indexer waiting for verified deployed address book.");
+  const latest=await client.getBlock({blockTag:"latest"}); await rewind(latest.number,latest.parentHash); const saved=await db.query("select max(number)::bigint number from chain_blocks where chain_id=$1",[chainId]); const from=BigInt(saved.rows[0].number ?? process.env.INDEXER_START_BLOCK ?? 0)+1n; if(from>latest.number)return;
+  const addresses=Object.values(book.contracts).filter((item):item is string=>!!item) as Address[]; const logs=await client.getLogs({address:addresses,fromBlock:from,toBlock:latest.number}); for(const log of logs) await project(log);
+  for(let n=from;n<=latest.number;n++){const block=n===latest.number?latest:await client.getBlock({blockNumber:n});await db.query("insert into chain_blocks(chain_id,number,hash,parent_hash) values($1,$2,$3,$4) on conflict do nothing",[chainId,Number(n),block.hash,block.parentHash]);} console.log(`Indexed ${logs.length} logs through BSC block ${latest.number}`);
+}
+void tick().catch(error=>{console.error(error);process.exitCode=1;});setInterval(()=>void tick().catch(console.error),12_000);

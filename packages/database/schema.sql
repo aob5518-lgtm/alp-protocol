@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS indexed_events (
   block_hash TEXT NOT NULL, contract_address TEXT NOT NULL, event_name TEXT NOT NULL, payload JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (chain_id, tx_hash, log_index)
 );
+CREATE TABLE IF NOT EXISTS sponsor_edges (wallet_address TEXT PRIMARY KEY, sponsor_address TEXT NOT NULL, bound_block BIGINT NOT NULL, tx_hash TEXT NOT NULL UNIQUE);
 CREATE TABLE IF NOT EXISTS assets (asset_id BIGINT PRIMARY KEY, token_address TEXT NOT NULL UNIQUE, symbol TEXT NOT NULL, name TEXT NOT NULL, oracle_address TEXT, vault_address TEXT, launch_status TEXT NOT NULL, risk_status TEXT NOT NULL, sealed BOOLEAN NOT NULL DEFAULT false, updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS launch_pools (pool_address TEXT PRIMARY KEY, asset_id BIGINT NOT NULL REFERENCES assets(asset_id), created_block BIGINT NOT NULL, owner_address TEXT NOT NULL, active BOOLEAN NOT NULL DEFAULT true);
 CREATE TABLE IF NOT EXISTS positions (global_position_id TEXT PRIMARY KEY, pool_address TEXT NOT NULL REFERENCES launch_pools(pool_address), wallet_address TEXT NOT NULL, partner_amount NUMERIC NOT NULL, usdt_amount NUMERIC NOT NULL, total_value NUMERIC NOT NULL, effective_compute NUMERIC NOT NULL, status TEXT NOT NULL, created_block BIGINT NOT NULL, created_at TIMESTAMPTZ NOT NULL);
@@ -22,3 +23,4 @@ CREATE TABLE IF NOT EXISTS safe_proposals (id UUID PRIMARY KEY, proposer_address
 CREATE INDEX IF NOT EXISTS positions_wallet_idx ON positions(wallet_address);
 CREATE INDEX IF NOT EXISTS events_block_idx ON indexed_events(chain_id, block_number);
 CREATE INDEX IF NOT EXISTS audit_logs_actor_idx ON admin_audit_logs(actor_address, created_at DESC);
+CREATE INDEX IF NOT EXISTS sponsor_edges_sponsor_idx ON sponsor_edges(sponsor_address);
