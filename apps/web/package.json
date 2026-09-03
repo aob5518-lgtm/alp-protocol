@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:locale": "node --test test/locale-ui.test.mjs"
   },
   "dependencies": {
     "@metamask/connect-evm": "^2.1.1",

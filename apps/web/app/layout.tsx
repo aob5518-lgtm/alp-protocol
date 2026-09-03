@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
+import "./locale.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
@@ -7,9 +9,10 @@ export const metadata: Metadata = {
   description: "The infrastructure for launching global assets onchain.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = (await cookies()).get("alp.locale")?.value === "zh-CN" ? "zh-CN" : "en-US";
   return (
-    <html lang="en-US">
+    <html lang={locale}>
       <body><Providers>{children}</Providers></body>
     </html>
   );

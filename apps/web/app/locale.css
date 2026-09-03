@@ -1,0 +1,108 @@
+.locale {
+  position: relative;
+  flex: none;
+}
+
+.locale-trigger {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(20, 31, 56, .65);
+  color: #c5d1e9;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.locale-backdrop { display: none; }
+
+.locale-menu {
+  position: absolute;
+  z-index: 10;
+  top: 41px;
+  right: 0;
+  display: grid;
+  width: 168px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #111a30;
+  box-shadow: 0 18px 40px #0008;
+}
+
+.locale-menu p {
+  margin: 4px 8px 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.locale-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #d2ddf3;
+  cursor: pointer;
+  text-align: left;
+}
+
+.locale-menu button:hover,
+.locale-menu button.active { background: #27375e; }
+.locale-menu .locale-cancel { display: none; }
+
+@media (max-width: 760px) {
+  .topbar { gap: 10px; }
+  .brand { flex: none; }
+  .top-actions { min-width: 0; gap: 8px; margin-left: auto; }
+  .locale-trigger {
+    display: flex !important;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .locale-trigger .locale-label,
+  .locale-trigger .locale-chevron { display: none; }
+  .wallet { min-width: 0; padding: 9px 10px; white-space: nowrap; }
+  .locale { position: static; }
+  .locale-backdrop {
+    position: fixed;
+    z-index: 9;
+    inset: 0;
+    display: block;
+    border: 0;
+    background: rgba(3, 8, 18, .46);
+  }
+  .locale-menu {
+    position: fixed;
+    z-index: 10;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    padding: 16px 18px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -18px 50px #000a;
+  }
+  .locale-menu p { margin: 2px 4px 12px; font-size: 12px; text-transform: none; }
+  .locale-menu button { padding: 13px 10px; font-size: 15px; }
+  .locale-menu .locale-cancel {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    color: #a9bada;
+  }
+}
