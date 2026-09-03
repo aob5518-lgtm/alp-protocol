@@ -1,0 +1,8 @@
+node_modules
+.next
+.turbo
+artifacts
+packages/contracts/out
+packages/contracts/cache
+.git
+.env

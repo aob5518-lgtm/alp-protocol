@@ -21,6 +21,44 @@ services:
     image: ghcr.io/foundry-rs/foundry:latest
     command: anvil --host 0.0.0.0 --chain-id 31337
     ports: ["8545:8545"]
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: pnpm --filter @alp/api dev
+    environment:
+      DATABASE_URL: postgresql://alp:alp@postgres:5432/alp
+      API_PORT: 4000
+      SESSION_SECRET: local-development-only-change-me
+    ports: ["4000:4000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  indexer:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: pnpm --filter @alp/indexer dev
+    environment:
+      DATABASE_URL: postgresql://alp:alp@postgres:5432/alp
+      RPC_URL: ${RPC_URL:-https://data-seed-prebsc-1-s1.bnbchain.org:8545}
+      ADDRESS_BOOK_PATH: /workspace/deployments/bsc-testnet.json
+      INDEXER_START_BLOCK: ${INDEXER_START_BLOCK:-0}
+    volumes: ["../deployments:/workspace/deployments:ro"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: pnpm --filter @alp/web dev
+    environment:
+      NODE_ENV: development
+    ports: ["3000:3000"]
+    depends_on:
+      api:
+        condition: service_started
 volumes:
   postgres-data:
   redis-data:
