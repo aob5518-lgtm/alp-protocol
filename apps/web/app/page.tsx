@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {ArrowUpRight, ChevronDown, CircleGauge, Globe2, LayoutDashboard, Network, Plus, ShieldCheck, Wallet} from "lucide-react";
+import {ArrowUpRight, ChevronDown, CircleGauge, LayoutDashboard, Network, Plus, ShieldCheck, Wallet} from "lucide-react";
 import {useLocale, useTranslations, useWallet} from "./providers";
 import walletStyles from "./wallet.module.css";
 
@@ -19,7 +19,7 @@ function Heading({eyebrow,title,text}:{eyebrow:string;title:string;text?:string}
 function LocaleSwitcher() {
   const common=useTranslations("common"),{locale,setLocale}=useLocale(); const [open,setOpen]=useState(false);
   const choose=(next:"en-US"|"zh-CN")=>{setLocale(next);setOpen(false);};
-  return <div className="locale"><button className="locale-trigger" type="button" aria-label={common("language")} aria-expanded={open} aria-controls="locale-menu" onClick={()=>setOpen(!open)}><Globe2 size={16}/><span className="locale-label">{locale==="zh-CN"?"中文":"EN"}</span><ChevronDown className="locale-chevron" size={13}/></button>{open&&<><button className="locale-backdrop" type="button" aria-label={common("cancel")} onClick={()=>setOpen(false)}/><div className="locale-menu" id="locale-menu" role="menu" aria-label={common("language")}><p>{common("language")}</p><button type="button" role="menuitemradio" aria-checked={locale==="en-US"} className={locale==="en-US"?"active":""} onClick={()=>choose("en-US")}><span>English</span>{locale==="en-US"&&<span aria-hidden="true">✓</span>}</button><button type="button" role="menuitemradio" aria-checked={locale==="zh-CN"} className={locale==="zh-CN"?"active":""} onClick={()=>choose("zh-CN")}><span>简体中文</span>{locale==="zh-CN"&&<span aria-hidden="true">✓</span>}</button><button className="locale-cancel" type="button" onClick={()=>setOpen(false)}>{common("cancel")}</button></div></>}</div>;
+  return <div className="locale"><button className="locale-trigger" type="button" aria-label={common("language")} aria-expanded={open} aria-controls="locale-menu" onClick={()=>setOpen(!open)}><span className="locale-icon" aria-hidden="true">🌐</span><span className="locale-label">{locale==="zh-CN"?"中文":"EN"}</span><ChevronDown className="locale-chevron" size={13}/></button>{open&&<><button className="locale-backdrop" type="button" aria-label={common("cancel")} onClick={()=>setOpen(false)}/><div className="locale-menu" id="locale-menu" role="menu" aria-label={common("language")}><p>{common("language")}</p><button type="button" role="menuitemradio" aria-checked={locale==="en-US"} className={locale==="en-US"?"active":""} onClick={()=>choose("en-US")}><span>English</span>{locale==="en-US"&&<span aria-hidden="true">✓</span>}</button><button type="button" role="menuitemradio" aria-checked={locale==="zh-CN"} className={locale==="zh-CN"?"active":""} onClick={()=>choose("zh-CN")}><span>简体中文</span>{locale==="zh-CN"&&<span aria-hidden="true">✓</span>}</button><button className="locale-cancel" type="button" onClick={()=>setOpen(false)}>{common("cancel")}</button></div></>}</div>;
 }
 
 function AlpApp() {

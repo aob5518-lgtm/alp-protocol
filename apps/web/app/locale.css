@@ -18,6 +18,8 @@
   font-size: 12px;
 }
 
+.locale-icon { display: block; font-size: 17px; line-height: 1; }
+
 .locale-backdrop { display: none; }
 
 .locale-menu {
@@ -70,6 +72,9 @@
     height: 40px;
     flex-shrink: 0;
     padding: 0;
+    border-color: rgba(174, 228, 255, .72);
+    background: #142b55;
+    box-shadow: 0 0 0 1px rgba(174, 228, 255, .12), 0 8px 18px rgba(0, 0, 0, .22);
   }
   .locale-trigger .locale-label,
   .locale-trigger .locale-chevron { display: none; }
