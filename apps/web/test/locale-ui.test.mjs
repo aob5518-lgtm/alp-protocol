@@ -6,7 +6,7 @@ const read = (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8");
 
 test("mobile locale trigger remains visible and opens a language sheet", async () => {
   const [page, css, en, zh] = await Promise.all([
-    read("app/page.tsx"),
+    read("app/components/app-shell.tsx"),
     read("app/locale.css"),
     read("messages/en-US.json"),
     read("messages/zh-CN.json"),
@@ -14,8 +14,7 @@ test("mobile locale trigger remains visible and opens a language sheet", async (
 
   assert.match(page, /className="locale-trigger"/);
   assert.doesNotMatch(page, /className="control"/);
-  assert.match(page, /<span>English<\/span>/);
-  assert.match(page, /<span>简体中文<\/span>/);
+  assert.match(page, /"English":"简体中文"/);
   assert.match(css, /\.locale-trigger\s*\{[\s\S]*display: flex !important/);
   assert.match(css, /\.locale-menu\s*\{[\s\S]*position: fixed/);
   assert.match(en, /"language":"Language"/);

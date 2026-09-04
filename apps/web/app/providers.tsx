@@ -9,15 +9,16 @@ import zh from "../messages/zh-CN.json";
 import {wagmiConfig} from "./wagmi";
 
 export type Locale = "en-US" | "zh-CN";
-type WalletState = {address?: string; connect: () => Promise<void>; disconnect: () => void; error?: string};
+type WalletStatus = "disconnected"|"connecting"|"connected"|"wrongNetwork"|"error";
+type WalletState = {address?: string; connect: (connectorId:string) => Promise<void>; disconnect: () => void; error?: string; state:WalletStatus; connectors:{id:string;name:string}[]};
 
-export default function Providers({children}: {children: ReactNode}) {
+export default function Providers({children,initialLocale="en-US"}: {children: ReactNode;initialLocale?:Locale}) {
   const [queryClient] = useState(()=>new QueryClient());
-  return <WagmiProvider config={wagmiConfig}><QueryClientProvider client={queryClient}><ProviderState>{children}</ProviderState></QueryClientProvider></WagmiProvider>;
+  return <WagmiProvider config={wagmiConfig}><QueryClientProvider client={queryClient}><ProviderState initialLocale={initialLocale}>{children}</ProviderState></QueryClientProvider></WagmiProvider>;
 }
 
-function ProviderState({children}: {children: ReactNode}) {
-  const [locale, setLocale] = useState<Locale>("en-US");
+function ProviderState({children,initialLocale}: {children: ReactNode;initialLocale:Locale}) {
+  const [locale, setLocale] = useState<Locale>(initialLocale);
   const [error, setError] = useState<string>();
   const {address, chainId} = useConnection();
   const {connectAsync, connectors} = useConnect();
@@ -38,18 +39,17 @@ function ProviderState({children}: {children: ReactNode}) {
     window.localStorage.setItem("alp.locale", locale);
     document.cookie = `alp.locale=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
   }, [locale]);
-  const connect = async () => {
+  const state:WalletStatus=address?(chainId===bscTestnet.id?"connected":"wrongNetwork"):error?"error":"disconnected";
+  const connect = async (connectorId:string) => {
     try {
-      const candidates=[...connectors].sort((left,right)=>(left.id==="metaMask"?0:1)-(right.id==="metaMask"?0:1));
-      if (!candidates.length) throw new Error("No wallet connector is available. Install MetaMask, TokenPocket or OKX Wallet.");
-      let connected=false, lastError:unknown;
-      for (const connector of candidates) { try { await connectAsync({connector}); connected=true; break; } catch (cause) { lastError=cause; } }
-      if (!connected) throw lastError ?? new Error("Wallet connection failed.");
+      const connector=connectors.find(candidate=>candidate.id===connectorId);
+      if (!connector) throw new Error("Selected wallet is unavailable.");
+      await connectAsync({connector});
       if (chainId !== bscTestnet.id) await switchChainAsync({chainId:bscTestnet.id});
       setError(undefined);
     } catch (cause) { const code=(cause as {code?:number}).code; setError(code===4001?"Wallet rejected the request.":cause instanceof Error?cause.message:"Wallet connection failed."); }
   };
-  return <TranslationContext.Provider value={messages as Record<string, unknown>}><LocaleContext.Provider value={{locale, setLocale}}><WalletContext.Provider value={{address, connect, disconnect, error}}>{children}</WalletContext.Provider></LocaleContext.Provider></TranslationContext.Provider>;
+  return <TranslationContext.Provider value={messages as Record<string, unknown>}><LocaleContext.Provider value={{locale, setLocale}}><WalletContext.Provider value={{address, connect, disconnect, error, state, connectors:connectors.map(connector=>({id:connector.id,name:connector.name}))}}>{children}</WalletContext.Provider></LocaleContext.Provider></TranslationContext.Provider>;
 }
 
 const LocaleContext = createContext<{locale: Locale; setLocale: (locale: Locale) => void}>({locale: "en-US", setLocale: () => undefined});
@@ -62,5 +62,5 @@ export function useTranslations(section: string) {
     return typeof value === "string" ? value : key;
   };
 }
-const WalletContext = createContext<WalletState>({connect: async () => undefined, disconnect: () => undefined});
+const WalletContext = createContext<WalletState>({connect: async () => undefined, disconnect: () => undefined, state:"disconnected", connectors:[]});
 export const useWallet = () => useContext(WalletContext);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
 import "./locale.css";
+import "./product.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const locale = (await cookies()).get("alp.locale")?.value === "zh-CN" ? "zh-CN" : "en-US";
   return (
     <html lang={locale}>
-      <body><Providers>{children}</Providers></body>
+      <body><Providers initialLocale={locale}>{children}</Providers></body>
     </html>
   );
 }
