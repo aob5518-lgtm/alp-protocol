@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import "./locale.css";
 import "./product.css";
+import "./polish.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {

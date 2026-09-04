@@ -1,1 +1,1 @@
-import {SimplePage} from "../../features/product-pages"; export default function Top100(){return <SimplePage title="Top100"/>}
+import {Top100Page} from "../../features/product-pages"; export default Top100Page;

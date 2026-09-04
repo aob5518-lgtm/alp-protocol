@@ -1,1 +1,1 @@
-import {SimplePage} from "../../features/product-pages"; export default function Nodes(){return <SimplePage title="Nodes"/>}
+import {NodesPage} from "../../features/product-pages"; export default NodesPage;
