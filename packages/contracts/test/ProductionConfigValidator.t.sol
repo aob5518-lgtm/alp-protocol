@@ -28,9 +28,17 @@ contract ConfigTarget {
         return approved;
     }
 
-    function liquidityConsumersSealed() external view returns (bool) { return closed; }
-    function snapshotRegistry() external view returns (address) { return address(this); }
-    function volumeBase() external pure returns (uint8) { return 1; }
+    function liquidityConsumersSealed() external view returns (bool) {
+        return closed;
+    }
+
+    function snapshotRegistry() external view returns (address) {
+        return address(this);
+    }
+
+    function volumeBase() external pure returns (uint8) {
+        return 1;
+    }
 
     function TIER_RULES_V1_HASH() external pure returns (bytes32) {
         return keccak256(

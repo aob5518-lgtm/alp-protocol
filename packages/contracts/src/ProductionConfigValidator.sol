@@ -103,13 +103,21 @@ contract ProductionConfigValidator is AccessControl {
         return success && result.length == 32 && abi.decode(result, (bytes32)) == expected;
     }
 
-    function _returnsAddress(address target, string memory selector, address expected) private view returns (bool) {
+    function _returnsAddress(address target, string memory selector, address expected)
+        private
+        view
+        returns (bool)
+    {
         if (!_isContract(target)) return false;
         (bool success, bytes memory result) = target.staticcall(abi.encodeWithSignature(selector));
         return success && result.length == 32 && abi.decode(result, (address)) == expected;
     }
 
-    function _returnsUint8(address target, string memory selector, uint8 expected) private view returns (bool) {
+    function _returnsUint8(address target, string memory selector, uint8 expected)
+        private
+        view
+        returns (bool)
+    {
         if (!_isContract(target)) return false;
         (bool success, bytes memory result) = target.staticcall(abi.encodeWithSignature(selector));
         return success && result.length == 32 && abi.decode(result, (uint8)) == expected;

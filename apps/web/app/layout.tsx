@@ -5,11 +5,14 @@ import "./locale.css";
 import "./product.css";
 import "./polish.css";
 import Providers from "./providers";
+import en from "../messages/en-US.json";
+import zh from "../messages/zh-CN.json";
+import "./content.css";
 
-export const metadata: Metadata = {
-  title: "ALP — Asset Launch Protocol",
-  description: "The infrastructure for launching global assets onchain.",
-};
+export async function generateMetadata():Promise<Metadata>{
+  const messages=(await cookies()).get("alp.locale")?.value==="zh-CN"?zh:en;
+  return {title:messages.common.metadataTitle,description:messages.common.metadataDescription};
+}
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = (await cookies()).get("alp.locale")?.value === "zh-CN" ? "zh-CN" : "en-US";

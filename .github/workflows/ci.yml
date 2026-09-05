@@ -11,6 +11,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm --filter @alp/web build
+      - run: pnpm --filter @alp/web test:locale
+      - run: pnpm --filter @alp/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @alp/web test:e2e
       - run: pnpm --filter @alp/indexer test:tiers
       - uses: foundry-rs/foundry-toolchain@v1
       - run: forge fmt --check

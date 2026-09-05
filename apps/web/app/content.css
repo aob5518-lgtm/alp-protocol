@@ -1,0 +1,91 @@
+html{scroll-behavior:smooth;scroll-padding-top:28px}
+.landing>header{position:sticky;top:0;z-index:30;flex-wrap:wrap;height:auto;min-height:76px;padding-top:12px;padding-bottom:12px;background:rgba(5,9,20,.94)}
+.landing>header .top-actions{margin-left:0}
+.landing .landing-hero{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(240px,1fr);gap:48px;max-width:1440px;margin:auto;padding:76px clamp(24px,6vw,88px) 80px;align-items:center}
+.landing .landing-hero>div:first-child{display:block;margin-top:0;min-width:0}
+.landing .landing-hero .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.landing-hero h1{font-size:clamp(42px,4.6vw,68px);line-height:1.06}
+.landing-hero>div:first-child>span{color:#a8b6d0;font-size:16px;line-height:1.7}
+.landing .landing-hero>.asset-network{display:grid;margin:auto}
+.asset-network{isolation:isolate;flex-shrink:0}
+.asset-network>b{z-index:1}
+.asset-connections{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:#5379a7;stroke-width:1}
+.asset-connections .genesis-link{stroke:#bcdeff;stroke-width:2}
+.asset-network .genesis{border-color:#d7eeff!important;background:#25436a;color:#fff;font-weight:700;box-shadow:0 0 22px #92caff24;animation:genesis-pulse 7s ease-in-out infinite}
+@keyframes genesis-pulse{50%{box-shadow:0 0 30px #92caff44}}
+.landing-body{max-width:1440px;margin:auto;padding:0 clamp(24px,6vw,88px)}
+.landing-section{padding:54px 0;border-top:1px solid var(--line);scroll-margin-top:20px}
+.landing-section h2{margin:12px 0 28px;font-size:clamp(26px,3vw,36px);letter-spacing:-.03em}
+.landing-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.landing-cards.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.landing-cards article,.future-assets article{padding:24px;border:1px solid var(--line);border-radius:14px;background:#0c1930}
+.landing-cards h3{font-size:19px;margin:0 0 12px}
+.landing-cards p,.landing-section>p{color:#a7b9d2;font-size:14px;line-height:1.7}
+.landing-cards a{display:block;margin-top:16px}
+.landing-cards .genesis-card{border-color:#89b8ed66}
+.future-assets{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.future-assets article{display:flex;justify-content:space-between;gap:12px;padding:16px}
+.future-assets span{font-size:12px;color:#98adc9}
+.protocol-flow{list-style:none;display:flex;align-items:stretch;gap:24px;padding:0}
+.protocol-flow li{position:relative;flex:1;display:grid;place-items:center;text-align:center;padding:20px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px}
+.protocol-flow li:not(:last-child)::after{content:"→";position:absolute;right:-20px;color:#9bc4f4}
+.capabilities,.documentation-links{display:flex;flex-wrap:wrap;gap:12px}
+.capabilities span,.documentation-links a{padding:13px 18px;border:1px solid var(--line);border-radius:10px;font-size:14px}
+.final-cta{min-height:calc(100svh + 80px);padding-bottom:80px}
+.wallet-wrap{flex-shrink:0}
+.wallet-overlay{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:18px}
+.wallet-dismiss{position:absolute;inset:0;border:0;background:#0009}
+.wallet-dialog{position:relative;width:min(420px,100%);max-height:85dvh;overflow:auto;padding:20px;border:1px solid var(--line);border-radius:16px;background:#0c1730}
+.wallet-dialog header{display:flex;justify-content:space-between;align-items:center}
+.wallet-dialog button,.wallet-dialog a,.wallet-dialog>span{display:flex;align-items:center;gap:8px;padding:12px;border:0;background:transparent;color:#d5e1f5;text-decoration:none;cursor:pointer}
+.wallet-dialog p{overflow-wrap:anywhere;font-size:14px}
+.wallet-error{position:absolute;top:100%;right:0;padding:10px;min-width:220px;background:#20152a;color:#ffd5df;z-index:40;font-size:13px}
+.locale-trigger svg{display:block;flex:none;color:#c8e7ff}
+.locale-menu{z-index:81;min-width:168px}
+.locale-backdrop{z-index:80}
+.top-actions{flex-shrink:0}
+.product-metric .status-badge{display:inline-flex;font-size:12px}
+.status-badge{font-size:12px}
+.app-mobile-nav a,.app-mobile-nav button{font-size:12px}
+.data-table{grid-template-columns:repeat(6,minmax(0,1fr))}
+.data-table span{min-width:0;overflow-wrap:anywhere}
+.portfolio-metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
+.app-topbar{position:relative;z-index:30}
+.app-content .mechanism-grid{margin-top:20px}
+.landing .eyebrow{font-size:12px}
+@media(max-width:1100px){
+ .landing>header{gap:18px}
+ .landing>header nav{order:3;width:100%;justify-content:center}
+ .landing>header .top-actions{margin-left:auto}
+ .portfolio-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .landing-cards.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:761px) and (max-width:900px){
+ .landing .landing-hero{grid-template-columns:1fr}
+ .landing .landing-hero>.asset-network{width:250px;height:250px}
+ .product-grid,.explore-hero{grid-template-columns:1fr}
+ .explore-hero .asset-network{width:230px;height:230px}
+}
+@media(max-width:760px){
+ .landing>header nav{display:flex;gap:20px;overflow-x:auto;justify-content:flex-start}
+ .landing>header nav a{white-space:nowrap}
+ .landing .landing-hero{grid-template-columns:1fr;padding:44px 22px 46px;gap:40px}
+ .landing-hero h1{font-size:clamp(39px,9vw,54px)}
+ .landing-body{padding:0 22px}
+ .landing-cards,.landing-cards.four{grid-template-columns:1fr}
+ .future-assets{grid-template-columns:repeat(2,1fr)}
+ .protocol-flow{flex-direction:column;gap:24px}
+ .protocol-flow li:not(:last-child)::after{content:"↓";right:50%;bottom:-22px}
+ .breadcrumb>span,.breadcrumb>b{display:none}
+ .app-topbar{gap:8px}
+ .app-topbar .wallet{max-width:170px;font-size:12px}
+ .locale-menu{position:fixed;top:auto;bottom:0;left:0;right:0;width:100%;max-height:80dvh;overflow:auto}
+ .more-menu{z-index:40}
+ .more-menu .locale-label{display:block}
+ .portfolio-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .data-table{grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;padding:10px 6px}
+ .wallet-dialog{align-self:end}
+ .explore-hero{min-width:0}
+ .explore-hero h1{overflow-wrap:break-word}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.asset-network .genesis{animation:none}}
