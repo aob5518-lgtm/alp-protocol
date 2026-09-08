@@ -24,6 +24,7 @@ for(const locale of ["en-US","zh-CN"] as const){
       const box=await trigger.boundingBox();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBeTruthy();
       const body=await page.locator("body").innerText();
+      if(locale==="zh-CN")expect(body).not.toContain("Testnet");
       const current=new Set(flattened(dictionary));
       for(const foreign of flattened(other).filter(v=>v.length>12&&!current.has(v)&&!v.includes("{"))){
         expect(body,route+" must not show "+foreign).not.toContain(foreign);
@@ -41,10 +42,18 @@ test("landing anchors, language switching and persistence",async({page,context})
   await page.getByRole("button",{name:en.common.language,exact:true}).click();
   await page.getByRole("menuitemradio",{name:"简体中文"}).click();
   await expect(page.locator("h1")).toHaveText(zh.explore.title);
+  const cta=await page.locator(".final-cta").boundingBox();
+  expect(cta!.height).toBeLessThan(page.viewportSize()!.height);
   for(const key of ["assets","protocol","ecosystem","developers","docs"] as const){
     await page.locator("header nav").getByRole("link",{name:zh.landing[key],exact:true}).click();
     await expect(page).toHaveURL(new RegExp("#"+key+"$"));
-    await expect.poll(()=>page.locator("#"+key).evaluate(el=>Math.abs(el.getBoundingClientRect().top))).toBeLessThan(100);
+    // A real destination must be readable below the sticky header, including
+    // the final section where natural scrolling stops at the page bottom.
+    await expect.poll(()=>page.locator("#"+key+" h2").evaluate(el=>{
+      const heading=el.getBoundingClientRect();
+      const header=document.querySelector(".landing>header")!.getBoundingClientRect();
+      return heading.top>=header.bottom && heading.bottom<=innerHeight;
+    })).toBeTruthy();
   }
   await page.locator("header .top-actions").getByRole("link",{name:zh.landing.launchApp,exact:true}).click();
   await expect(page.locator("h1")).toHaveText(zh.explore.title);

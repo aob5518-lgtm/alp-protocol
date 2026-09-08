@@ -18,7 +18,7 @@
     "zh": "简体中文",
     "localeLabelEn": "EN",
     "localeLabelZh": "中文",
-    "testnet": "BSC Testnet",
+    "testnet": "BSC 测试网",
     "gaming": "游戏",
     "token": "代币",
     "category": "类别",
@@ -53,7 +53,7 @@
     "address": "地址",
     "network": "网络",
     "cancel": "取消",
-    "testnet": "BSC Testnet",
+    "testnet": "BSC 测试网",
     "noConnectors": "未检测到支持的钱包。"
   },
   "errors": {

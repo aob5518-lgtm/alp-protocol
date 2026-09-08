@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import {useEffect,useRef} from "react";
 import {LocaleSwitcher} from "../components/app-shell";
 import {AssetNetwork} from "../components/asset-network";
 import {useTranslations} from "../providers";
@@ -8,7 +9,16 @@ const sections=["assets","protocol","ecosystem","developers","docs"] as const;
 const repository="https://github.com/aob5518-lgtm/alp-protocol";
 export default function LandingClient(){
   const t=useTranslations("landing"),e=useTranslations("explore"),c=useTranslations("common");
-  return <main className="landing">
+  const landingRef=useRef<HTMLElement>(null);
+  useEffect(()=>{
+    const root=landingRef.current,header=root?.querySelector("header");
+    if(!root||!header)return;
+    const update=()=>root.style.setProperty("--landing-header-height",`${header.getBoundingClientRect().height}px`);
+    update();
+    const observer=new ResizeObserver(update);observer.observe(header);
+    return()=>observer.disconnect();
+  },[]);
+  return <main className="landing" ref={landingRef}>
     <header><Link href="/" className="app-brand"><span>A</span><b>ALP</b></Link><nav>{sections.map(key=><a key={key} href={"#"+key}>{t(key)}</a>)}</nav><div className="top-actions"><LocaleSwitcher/><Link className="primary" href="/app/explore">{t("launchApp")}</Link></div></header>
     <section className="landing-hero"><div><p>{e("eyebrow")}</p><h1>{e("title")}</h1><span>{e("subtitle")}</span><div className="actions"><Link className="primary" href="/app/assets/relique">{e("primaryCTA")}</Link><Link className="secondary" href="/app/launch/relique">{e("secondaryCTA")}</Link></div></div><AssetNetwork/></section>
     <div className="landing-body">
