@@ -16,6 +16,11 @@ jobs:
       - run: pnpm --filter @alp/web test:e2e
       - run: pnpm --filter @alp/indexer test:tiers
       - uses: foundry-rs/foundry-toolchain@v1
+      - name: Install pinned Solidity dependencies
+        working-directory: packages/contracts
+        run: |
+          forge install foundry-rs/forge-std@v1.9.6 --no-git --shallow
+          forge install OpenZeppelin/openzeppelin-contracts@v5.4.0 --no-git --shallow
       - run: forge fmt --check
         working-directory: packages/contracts
       - run: forge test
